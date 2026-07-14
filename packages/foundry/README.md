@@ -14,8 +14,8 @@ https://github.com/zbaker94/soundsbored-remote-audio/releases/latest/download/mo
 
 ## Configure (GM)
 
-Enable the module, then in **Game Settings → Configure Settings → SoundsBored
-Remote Audio** set:
+Enable the module, then in **Game Settings → Configure Settings → SoundsBored:
+Beholder** set:
 
 - **Token endpoint** — your relay URL (e.g. the Railway relay), or blank for a
   same-origin relay.

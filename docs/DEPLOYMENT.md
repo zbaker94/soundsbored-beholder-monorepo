@@ -16,7 +16,7 @@ the operational how-to.
 | **Publisher** | The SoundsBored app. Publishes ONE WebRTC audio track (the master mix). | sibling repo `sounds-bored` |
 | **SFU** | `livekit-server` — the media server. Receives the one track, forwards a copy to each listener. **This is LiveKit; it is not a separate service and needs no account.** | `livekit/livekit-server` image |
 | **Relay (token)** | Fastify `POST /token` + `GET /healthz`. Mints LiveKit JWTs. | `packages/relay` |
-| **Consumer** | The **Foundry module** (`soundsbored-audio`) and/or the **Beholder** web listener. | `packages/foundry`, `packages/listener` |
+| **Consumer** | The **Foundry module** (`soundsbored-beholder`) and/or the **Beholder** web listener. | `packages/foundry`, `packages/listener` |
 
 "SFU + relay" together are what the plan calls the **relay**. Everyone —
 publisher and every consumer — configures the same three values (Contract C6):
@@ -179,12 +179,12 @@ https://github.com/zbaker94/soundsbored-remote-audio/releases/latest/download/mo
 npm run build -w @soundsbored/foundry     # → packages/foundry/dist/
 ```
 Copy the **contents** of `packages/foundry/dist/` into your Foundry data dir at
-`Data/modules/soundsbored-audio/` (so `module.json` is at that folder's root).
+`Data/modules/soundsbored-beholder/` (so `module.json` is at that folder's root).
 Restart Foundry.
 
 ### 6c. Configure (GM)
 1. Enable the module (Foundry v13+).
-2. **Game Settings → Configure Settings → SoundsBored Remote Audio** → set
+2. **Game Settings → Configure Settings → SoundsBored: Beholder** → set
    `tokenEndpoint` (e.g. `https://audio.example.com`), `room` (`world1`),
    `password`. World settings are GM-only to edit, readable by all players (so
    their browsers fetch a subscriber token).

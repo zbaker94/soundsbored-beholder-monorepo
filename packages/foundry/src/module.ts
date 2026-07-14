@@ -50,7 +50,7 @@ Hooks.once('init', () => {
 Hooks.on('getSceneControlButtons', (controls: Record<string, unknown>) => {
   controls[MODULE_ID] = {
     name: MODULE_ID,
-    title: 'SoundsBored Audio',
+    title: 'SoundsBored: Beholder',
     icon: 'fa-solid fa-headphones',
     // A non-tool control button that just opens the panel for everyone.
     tools: {

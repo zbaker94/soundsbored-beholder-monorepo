@@ -6,7 +6,7 @@ const getter = (values: Record<string, unknown>): SettingsGetter => (key) => val
 
 describe('MODULE_ID', () => {
   it('is the fixed module id', () => {
-    expect(MODULE_ID).toBe('soundsbored-audio');
+    expect(MODULE_ID).toBe('soundsbored-beholder');
   });
 });
 

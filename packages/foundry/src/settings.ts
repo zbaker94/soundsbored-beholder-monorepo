@@ -1,7 +1,7 @@
 import type { ListenerConfig } from '@soundsbored/core';
 
 /** Foundry module id — used as the settings namespace and module path. */
-export const MODULE_ID = 'soundsbored-audio';
+export const MODULE_ID = 'soundsbored-beholder';
 
 /** Setting keys registered under {@link MODULE_ID}. World-scope config (C6) plus
  *  per-client playback prefs. */

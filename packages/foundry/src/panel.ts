@@ -20,7 +20,7 @@ export class SoundsBoredPanel extends HandlebarsApplicationMixin(ApplicationV2) 
   static DEFAULT_OPTIONS = {
     id: 'soundsbored-panel',
     tag: 'div',
-    window: { title: 'SoundsBored Audio', icon: 'fa-solid fa-headphones' },
+    window: { title: 'SoundsBored: Beholder', icon: 'fa-solid fa-headphones' },
     position: { width: 320, height: 'auto' as const },
     actions: {
       join: SoundsBoredPanel.#onJoin,

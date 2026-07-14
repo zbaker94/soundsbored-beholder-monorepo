@@ -1,8 +1,8 @@
 {
-  "id": "soundsbored-audio",
-  "title": "SoundsBored Remote Audio",
+  "id": "soundsbored-beholder",
+  "title": "SoundsBored: Beholder",
   "description": "Hear a GM's live SoundsBored master mix in Foundry, with per-player volume and automatic reconnect.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
