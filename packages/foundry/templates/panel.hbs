@@ -1,0 +1,27 @@
+<section class="soundsbored-panel">
+  {{#if configured}}
+    <p class="soundsbored-status" data-state="{{state}}">{{stateLabel}}</p>
+    <div class="soundsbored-controls">
+      {{#if joined}}
+        <button type="button" data-action="leave">Leave audio</button>
+      {{else}}
+        <button type="button" data-action="join">Join audio</button>
+      {{/if}}
+      <label class="soundsbored-volume">
+        Volume
+        <input type="range" name="volume" min="0" max="1" step="0.01" value="{{volume}}" />
+      </label>
+      <label class="soundsbored-mute">
+        <input type="checkbox" name="muted" {{#if muted}}checked{{/if}} /> Mute
+      </label>
+    </div>
+  {{else}}
+    <p class="soundsbored-unconfigured">
+      {{#if isGM}}
+        SoundsBored audio isn't configured yet. Open the module settings and set the token endpoint, room, and password.
+      {{else}}
+        The GM hasn't configured SoundsBored audio yet.
+      {{/if}}
+    </p>
+  {{/if}}
+</section>

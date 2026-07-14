@@ -1,0 +1,46 @@
+name: Foundry module release
+
+on:
+  push:
+    tags:
+      - 'foundry-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build module
+        run: npm run build -w @soundsbored/foundry
+
+      - name: Stamp version + download URL from the tag
+        working-directory: packages/foundry/dist
+        run: |
+          VERSION="${GITHUB_REF_NAME#foundry-v}"
+          REPO="${GITHUB_REPOSITORY}"
+          DOWNLOAD="https://github.com/${REPO}/releases/download/${GITHUB_REF_NAME}/module.zip"
+          jq --arg v "$VERSION" --arg d "$DOWNLOAD" \
+            '.version=$v | .download=$d' module.json > module.json.tmp
+          mv module.json.tmp module.json
+
+      - name: Zip module
+        working-directory: packages/foundry/dist
+        run: zip -r ../module.zip .
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packages/foundry/dist/module.json
+            packages/foundry/module.zip
