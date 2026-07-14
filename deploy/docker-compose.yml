@@ -1,0 +1,73 @@
+# Full self-host stack: SFU + relay (token) + Beholder listener + Caddy (TLS).
+# One command brings up an internet-reachable backend with no third-party
+# service. Run from this directory on a host with a public IP and a domain:
+#
+#   cd deploy
+#   cp .env.example .env      # set DOMAIN, ROOM_PASSWORD, LIVEKIT_API_*
+#   docker compose up -d --build
+#
+# DNS: point {DOMAIN} and livekit.{DOMAIN} at this host. Open ports 80, 443,
+# 443/udp (Caddy) and 7881/tcp, 7882/udp (LiveKit media, direct).
+#
+# Consumers then use tokenEndpoint = https://{DOMAIN}. The Beholder listener is
+# served at https://{DOMAIN} itself and reaches the relay same-origin, so users
+# enter only room + password.
+
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --config /etc/livekit/livekit.yaml
+    environment:
+      # LiveKit reads keys from this env as "key: secret".
+      - 'LIVEKIT_KEYS=${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}'
+    volumes:
+      - ./livekit.yaml:/etc/livekit/livekit.yaml:ro
+    ports:
+      - '7881:7881' # media TCP fallback — DIRECT (not via Caddy)
+      - '7882:7882/udp' # media UDP preferred — DIRECT (not via Caddy)
+    restart: unless-stopped
+
+  token:
+    build:
+      context: ..
+      dockerfile: packages/relay/Dockerfile
+    environment:
+      - ROOM_PASSWORD=${ROOM_PASSWORD}
+      - SFU_URL=wss://livekit.${DOMAIN}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - PORT=8080
+    restart: unless-stopped
+
+  beholder:
+    build:
+      context: ..
+      dockerfile: packages/listener/Dockerfile
+    environment:
+      # Empty (but SET) → the listener hides the endpoint field and POSTs a
+      # relative /token (same-origin via Caddy). LISTENER_ROOM is left unset so
+      # users enter the room themselves (password is never injected).
+      - LISTENER_TOKEN_ENDPOINT=
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - token
+      - beholder
+      - livekit
+    environment:
+      - DOMAIN=${DOMAIN}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

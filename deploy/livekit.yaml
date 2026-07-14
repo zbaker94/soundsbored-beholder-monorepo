@@ -1,0 +1,12 @@
+# LiveKit SFU config for the full self-host stack (deploy/docker-compose.yml).
+# Signaling (7880) is fronted by Caddy for TLS (wss); media is exposed DIRECTLY
+# on the host (LiveKit requires the advertised media port to equal the reachable
+# port — it cannot sit behind an L4 proxy that remaps ports).
+#
+# Keys are injected via the LIVEKIT_KEYS env var (see docker-compose.yml), NOT
+# hardcoded here — set LIVEKIT_API_KEY / LIVEKIT_API_SECRET in deploy/.env.
+port: 7880
+rtc:
+  udp_port: 7882 # preferred media (UDP), published directly on the host
+  tcp_port: 7881 # media TCP fallback, published directly on the host
+  use_external_ip: true # advertise the host's public IP as the ICE candidate
