@@ -54,15 +54,18 @@ the internet from an **https** page needs `wss://` → TLS (§3).
 ## 3. Path A — UDP profile (`deploy/udp`, VPS, recommended)
 
 `deploy/udp/docker-compose.yml` brings up the whole backend — SFU + relay +
-Beholder + Caddy (auto-TLS) — in one command. Beholder is served same-origin with
-the relay, so listeners enter **only room + password**.
+Beholder + Caddy (auto-TLS) — in one command, across three subdomains. The relay
+host is injected + locked into Beholder, so listeners enter **only room +
+password**.
 
 ### A1. Prerequisites
 - A host with a **public IP** (any small VPS: DigitalOcean, Hetzner, etc.) with
   Docker + Docker Compose.
-- A **domain** you control (for TLS). Point two DNS `A` records at the host:
-  - `audio.example.com` → host IP
-  - `livekit.audio.example.com` → host IP
+- A **domain** you control (for TLS). Point three DNS `A` records at the host
+  (names are yours to pick — examples):
+  - `beholder.example.com` → host IP  (the listener)
+  - `relay.example.com` → host IP      (the token endpoint)
+  - `livekit.example.com` → host IP    (the SFU signaling)
 - Open ports on the host firewall: `80/tcp`, `443/tcp`, `443/udp` (Caddy) and
   `7881/tcp`, `7882/udp` (LiveKit media, direct).
 
@@ -71,7 +74,9 @@ the relay, so listeners enter **only room + password**.
 git clone <this repo> && cd soundsbored-remote-audio/deploy/udp
 cp .env.example .env
 # edit .env:
-#   DOMAIN=audio.example.com
+#   BEHOLDER_HOST=beholder.example.com
+#   RELAY_HOST=relay.example.com
+#   LIVEKIT_HOST=livekit.example.com
 #   ROOM_PASSWORD=<a password you distribute>
 #   LIVEKIT_API_KEY=<change from devkey>
 #   LIVEKIT_API_SECRET=<long random secret, >=32 chars>
@@ -79,29 +84,29 @@ docker compose up -d --build
 ```
 
 What comes up:
-- `caddy` — auto-obtains Let's Encrypt certs for both names; routes
-  `audio.example.com/token` → relay, `audio.example.com/*` → Beholder,
-  `livekit.audio.example.com` → SFU signaling.
+- `caddy` — auto-obtains Let's Encrypt certs for all three names; routes each host
+  to its service.
 - `livekit` — SFU; media published directly on `7881/tcp` + `7882/udp`;
   `use_external_ip` advertises the host IP.
-- `token` — relay; `SFU_URL=wss://livekit.audio.example.com`.
-- `beholder` — listener; endpoint field hidden (same-origin `/token`).
+- `token` — relay; `SFU_URL=wss://{LIVEKIT_HOST}`.
+- `beholder` — listener; endpoint locked to `https://{RELAY_HOST}` (cross-origin;
+  relay CORS is `*`).
 
 ### A3. Verify the backend
 ```bash
-curl -X POST https://audio.example.com/token \
+curl -X POST https://relay.example.com/token \
   -H 'Content-Type: application/json' \
   -d '{"room":"world1","role":"subscriber","password":"YOUR_PASSWORD"}'
-# → {"token":"...","url":"wss://livekit.audio.example.com"}
+# → {"token":"...","url":"wss://livekit.example.com"}
 # wrong password → 401 {"error":"bad password"}
 ```
 
 ### A4. Point the pieces at it
-- **Publisher (app):** Settings → tokenEndpoint `https://audio.example.com`, room
+- **Publisher (app):** Settings → tokenEndpoint `https://relay.example.com`, room
   `world1`, password → **Go Live**.
-- **Beholder listener:** players open `https://audio.example.com`, enter room +
+- **Beholder listener:** players open `https://beholder.example.com`, enter room +
   password, press play.
-- **Foundry module:** see §6, tokenEndpoint `https://audio.example.com`.
+- **Foundry module:** see §6, tokenEndpoint `https://relay.example.com`.
 
 ---
 
@@ -228,8 +233,8 @@ With the app publishing and a consumer configured:
 ```
 Publisher (app) ─┐
                  ├─ tokenEndpoint ─▶ Relay /token ─▶ mints JWT ─▶ SFU (self-hosted livekit-server)
-Foundry module ──┤    https://audio.example.com                     wss://livekit.audio.example.com
-Beholder web  ───┘    (same-origin for Beholder)                    media: host IP :7882/udp, :7881/tcp
+Foundry module ──┤    https://relay.example.com                    wss://livekit.example.com
+Beholder web  ───┘    (Beholder at https://beholder.example.com)   media: host IP :7882/udp, :7881/tcp
    every side: same room + password ───────────── audio track ──────────────┘
 ```
 

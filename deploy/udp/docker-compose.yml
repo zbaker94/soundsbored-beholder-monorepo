@@ -6,12 +6,12 @@
 #   cp .env.example .env      # set DOMAIN, ROOM_PASSWORD, LIVEKIT_API_*
 #   docker compose up -d --build
 #
-# DNS: point {DOMAIN} and livekit.{DOMAIN} at this host. Open ports 80, 443,
-# 443/udp (Caddy) and 7881/tcp, 7882/udp (LiveKit media, direct).
+# DNS: point BEHOLDER_HOST, RELAY_HOST, LIVEKIT_HOST at this host. Open ports 80,
+# 443, 443/udp (Caddy) and 7881/tcp, 7882/udp (LiveKit media, direct).
 #
-# Consumers then use tokenEndpoint = https://{DOMAIN}. The Beholder listener is
-# served at https://{DOMAIN} itself and reaches the relay same-origin, so users
-# enter only room + password.
+# Consumers use tokenEndpoint = https://{RELAY_HOST}. The Beholder listener is
+# served at https://{BEHOLDER_HOST} with the relay endpoint injected + locked, so
+# users enter only room + password.
 
 services:
   livekit:
@@ -33,7 +33,7 @@ services:
       dockerfile: packages/relay/Dockerfile
     environment:
       - ROOM_PASSWORD=${ROOM_PASSWORD}
-      - SFU_URL=wss://livekit.${DOMAIN}
+      - SFU_URL=wss://${LIVEKIT_HOST}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
       - PORT=8080
@@ -44,10 +44,10 @@ services:
       context: ../..
       dockerfile: packages/listener/Dockerfile
     environment:
-      # Empty (but SET) → the listener hides the endpoint field and POSTs a
-      # relative /token (same-origin via Caddy). LISTENER_ROOM is left unset so
-      # users enter the room themselves (password is never injected).
-      - LISTENER_TOKEN_ENDPOINT=
+      # Injected + locked → the listener hides the endpoint field and POSTs to the
+      # relay host (cross-origin; relay CORS is `*`). LISTENER_ROOM is left unset
+      # so users enter the room themselves (password is never injected).
+      - LISTENER_TOKEN_ENDPOINT=https://${RELAY_HOST}
     restart: unless-stopped
 
   caddy:
@@ -57,7 +57,9 @@ services:
       - beholder
       - livekit
     environment:
-      - DOMAIN=${DOMAIN}
+      - BEHOLDER_HOST=${BEHOLDER_HOST}
+      - RELAY_HOST=${RELAY_HOST}
+      - LIVEKIT_HOST=${LIVEKIT_HOST}
     ports:
       - '80:80'
       - '443:443'

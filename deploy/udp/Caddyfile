@@ -1,30 +1,25 @@
-# Caddy reverse proxy for the full self-host stack. Automatic Let's Encrypt TLS
-# for both names (no account — just DNS A records pointing at this host and
-# ports 80/443 open).
+# Caddy reverse proxy for the UDP profile. Automatic Let's Encrypt TLS for all
+# three names — no account, just A records pointing at this host and ports 80/443
+# open.
 #
-# Requires two DNS records → this host's public IP:
-#   {$DOMAIN}            e.g. audio.example.com   (Beholder listener + /token)
-#   livekit.{$DOMAIN}    e.g. livekit.audio.example.com   (SFU signaling, wss)
+# DNS: point each of BEHOLDER_HOST, RELAY_HOST, LIVEKIT_HOST at this host's IP.
 #
-# Media (7881/tcp, 7882/udp) does NOT go through Caddy — it is published
-# directly from the livekit container to the host (see docker-compose.yml).
+# Media (7881/tcp, 7882/udp) does NOT go through Caddy — it is published directly
+# from the livekit container to the host (see docker-compose.yml).
 
-# Main site: the Beholder listener, with the relay token endpoint same-origin.
-{$DOMAIN} {
-	# Token endpoint + health check → relay. Same-origin, so the listener's
-	# relative POST /token (LISTENER_TOKEN_ENDPOINT="") lands here.
-	@relay path /token /token/* /healthz
-	handle @relay {
-		reverse_proxy token:8080
-	}
-	# Everything else → the Beholder listener (nginx SPA).
-	handle {
-		reverse_proxy beholder:80
-	}
+# Beholder listener.
+{$BEHOLDER_HOST} {
+	reverse_proxy beholder:80
 }
 
-# SFU signaling over wss. The whole subdomain proxies to livekit:7880 (no path
-# assumptions — LiveKit owns every route here). SFU_URL = wss://livekit.{$DOMAIN}.
-livekit.{$DOMAIN} {
+# Relay token endpoint (POST /token, GET /healthz). CORS is `*` on the relay, so
+# the cross-origin fetch from the Beholder host is allowed.
+{$RELAY_HOST} {
+	reverse_proxy token:8080
+}
+
+# SFU signaling over wss. Whole host → livekit:7880 (no path assumptions).
+# SFU_URL = wss://{$LIVEKIT_HOST}.
+{$LIVEKIT_HOST} {
 	reverse_proxy livekit:7880
 }
