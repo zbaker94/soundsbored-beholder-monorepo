@@ -1,6 +1,6 @@
 import type { TokenRequest, TokenResponse } from '@soundsbored/contract';
 
-/** Everything a listener needs to obtain a subscriber token (Shared Contract C4). */
+/** Everything a listener needs to obtain a subscriber token (Shared Contract C6). */
 export interface ListenerConfig {
   tokenEndpoint: string;
   room: string;

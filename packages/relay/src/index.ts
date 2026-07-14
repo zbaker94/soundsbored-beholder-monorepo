@@ -11,8 +11,8 @@ interface ServerConfig {
   };
 }
 
-/** Resolve server config from the environment, applying C5 defaults.
- *  Throws if the required ROOM_PASSWORD is unset (C5: "exit 1 if unset"). */
+/** Resolve server config from the environment, applying C8 defaults.
+ *  Throws if the required ROOM_PASSWORD is unset (C8: "exit 1 if unset"). */
 export function resolveConfig(env: NodeJS.ProcessEnv): ServerConfig {
   const roomPassword = env['ROOM_PASSWORD'];
   if (!roomPassword) {

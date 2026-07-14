@@ -7,13 +7,14 @@ import {
   type ListenerConfig,
 } from './token.js';
 
-/** Connection state surfaced to consumers, tracking livekit auto-reconnect. */
+/** Connection state surfaced to consumers (Shared Contract C7 resilience). */
 export type ListenerState = 'connecting' | 'live' | 'reconnecting' | 'disconnected';
 
 export interface Listener {
   /**
-   * Fetch a subscriber token (Shared Contract C4) and connect to the room.
-   * @throws {TokenFetchError} if the token request fails or the response is malformed.
+   * Fetch a subscriber token (Shared Contract C4) and connect to the room (C5/C7).
+   * @throws {TokenFetchError} if the token request fails or its response is malformed.
+   * @throws the underlying livekit-client error if the room connection itself fails.
    */
   connect(): Promise<void>;
   /** Leave the room and tear down. */
@@ -21,9 +22,9 @@ export interface Listener {
   /** Attach the subscribed audio track to a caller-provided <audio> element. */
   attach(el: HTMLAudioElement): void;
   /** Per-listener playback volume, 0..1 (clamped). */
-  setVolume(v: number): void;
+  setVolume(volume: number): void;
   /** Mute or unmute this listener's playback without leaving the room. */
-  setMuted(m: boolean): void;
+  setMuted(muted: boolean): void;
   /** Subscribe to state changes; returns an unsubscribe fn. */
   onState(cb: (s: ListenerState) => void): () => void;
   getState(): ListenerState;
@@ -40,9 +41,9 @@ export interface ListenerDeps {
 const REFRESH_SKEW_MS = 30_000;
 
 /**
- * Framework-agnostic listener: subscribes to the single remote audio track,
+ * Framework-agnostic listener: subscribes to the single remote audio track (C5),
  * plays it through a caller-provided element with per-listener volume, and rides
- * livekit-client's auto-reconnect while surfacing connection state.
+ * livekit-client's auto-reconnect while surfacing connection state (C7).
  */
 export function createListener(config: ListenerConfig, deps: ListenerDeps = {}): Listener {
   const createRoom = deps.createRoom ?? (() => new Room());

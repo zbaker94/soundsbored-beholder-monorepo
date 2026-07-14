@@ -44,4 +44,4 @@ npm test          # run all tests
 npm run build     # typecheck + emit
 ```
 
-See [CONTRACT.md](CONTRACT.md) for the authoritative shared contract (C1–C7).
+See [CONTRACT.md](CONTRACT.md) for the authoritative shared contract: C1–C7 (cross-repo client/server) + C8–C10 (relay operational detail).
