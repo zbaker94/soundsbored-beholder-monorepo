@@ -52,8 +52,20 @@ function saveConfig(config: ListenerConfig): void {
 
 const defaults = window.__SOUNDSBORED__ ?? {};
 const saved = loadSaved();
-els.tokenEndpoint.value = saved.tokenEndpoint ?? defaults.tokenEndpoint ?? '';
-els.room.value = saved.room ?? defaults.room ?? '';
+
+// A key present in the server config is operator-locked: fill it, hide the
+// field (it's not the listener's to set). An absent key stays user-editable.
+function applyField(input: HTMLInputElement, key: 'tokenEndpoint' | 'room'): void {
+  if (key in defaults) {
+    input.value = defaults[key] ?? '';
+    input.closest('label')?.setAttribute('hidden', '');
+  } else {
+    input.value = saved[key] ?? '';
+  }
+}
+
+applyField(els.tokenEndpoint, 'tokenEndpoint');
+applyField(els.room, 'room');
 els.password.value = saved.password ?? '';
 
 function readConfig(): ListenerConfig | null {

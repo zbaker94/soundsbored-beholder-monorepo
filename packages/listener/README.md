@@ -17,10 +17,12 @@ Aliases `@soundsbored/core` + `@soundsbored/contract` to source, so no prior
 
 Each listener needs `{ tokenEndpoint, room, password }` (Shared Contract C6):
 - **In the UI** — fields persist to `localStorage`.
-- **Server defaults** (Docker) — `window.__SOUNDSBORED__` in `/config.js`
-  pre-fills the fields; user input overrides. Password is never server-injected.
-- Leave `tokenEndpoint` empty for a **same-origin** deploy (core POSTs a
-  relative `/token`).
+- **Server-locked** (Docker) — any `LISTENER_*` var you set becomes a key in
+  `window.__SOUNDSBORED__` (`/config.js`), and the app **hides** that field
+  (operator config, not the listener's to change). Unset vars stay editable.
+  Password is never server-injected.
+- Same-origin deploy: set `LISTENER_TOKEN_ENDPOINT=""` (empty) — the field
+  hides and core POSTs a relative `/token`.
 
 ## Docker (self-host, runtime env config)
 
