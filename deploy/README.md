@@ -4,8 +4,9 @@ Three self-contained ways to run the **full stack** (LiveKit SFU + relay token
 endpoint + Beholder listener). All self-hosted — no third-party service. In every
 profile the Beholder listener has its relay endpoint injected + locked, so
 listeners enter only **room + password**; the Foundry module is configured with
-the same `tokenEndpoint`. The `udp` profile uses three subdomains
-(beholder/relay/livekit); `tcp` and `local` inject the relay URL directly.
+the same `tokenEndpoint`. The `udp` profile uses two subdomains — one for
+Beholder, one for the relay (which fronts both the token endpoint and the SFU);
+`tcp` and `local` inject the relay URL directly.
 
 Pick by where you're hosting:
 

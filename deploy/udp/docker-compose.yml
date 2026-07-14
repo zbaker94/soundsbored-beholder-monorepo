@@ -6,12 +6,13 @@
 #   cp .env.example .env      # set DOMAIN, ROOM_PASSWORD, LIVEKIT_API_*
 #   docker compose up -d --build
 #
-# DNS: point BEHOLDER_HOST, RELAY_HOST, LIVEKIT_HOST at this host. Open ports 80,
-# 443, 443/udp (Caddy) and 7881/tcp, 7882/udp (LiveKit media, direct).
+# DNS: point BEHOLDER_HOST and RELAY_HOST at this host. Open ports 80, 443,
+# 443/udp (Caddy) and 7881/tcp, 7882/udp (LiveKit media, direct).
 #
-# Consumers use tokenEndpoint = https://{RELAY_HOST}. The Beholder listener is
-# served at https://{BEHOLDER_HOST} with the relay endpoint injected + locked, so
-# users enter only room + password.
+# Consumers use tokenEndpoint = https://{RELAY_HOST} (which fronts BOTH the token
+# endpoint and the LiveKit SFU). The Beholder listener is served at
+# https://{BEHOLDER_HOST} with the relay endpoint injected + locked, so users
+# enter only room + password.
 
 services:
   livekit:
@@ -33,7 +34,7 @@ services:
       dockerfile: packages/relay/Dockerfile
     environment:
       - ROOM_PASSWORD=${ROOM_PASSWORD}
-      - SFU_URL=wss://${LIVEKIT_HOST}
+      - SFU_URL=wss://${RELAY_HOST}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
       - PORT=8080
@@ -59,7 +60,6 @@ services:
     environment:
       - BEHOLDER_HOST=${BEHOLDER_HOST}
       - RELAY_HOST=${RELAY_HOST}
-      - LIVEKIT_HOST=${LIVEKIT_HOST}
     ports:
       - '80:80'
       - '443:443'
