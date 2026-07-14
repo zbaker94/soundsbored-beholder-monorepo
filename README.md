@@ -13,6 +13,8 @@ A Tauri soundboard app publishes a live WebRTC audio track to the LiveKit SFU. R
 |---------|-------------|
 | `packages/contract` | Shared `TokenRequest`/`TokenResponse`/`TokenError` types + `Role` constants |
 | `packages/relay` | Token mint endpoint (`POST /token`), LiveKit configs, Docker setup |
+| `packages/core` | `listener-core` — subscribe/play/per-listener volume/reconnect (framework-agnostic) |
+| `packages/listener` | Standalone self-host web listener (Vite) over `core` |
 
 ## Quick Start (self-host)
 
