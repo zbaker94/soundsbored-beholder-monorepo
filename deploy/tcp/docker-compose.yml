@@ -1,0 +1,62 @@
+# TCP-only full stack for NO-UDP hosts (Railway et al.): SFU (with the
+# proxy-port bridge) + relay + Beholder.
+#
+# On Railway you deploy these as THREE separate services (Railway maps each
+# compose service to its own service) — see RAILWAY.md for the exact per-service
+# setup. This file also runs the whole stack on a single no-UDP host, and (with
+# the localhost defaults) locally simulates + verifies the bridge image:
+#
+#   cd deploy/tcp
+#   cp .env.example .env       # localhost defaults work as-is for a smoke run
+#   docker compose up -d --build
+#   # tokenEndpoint http://localhost:8080, Beholder http://localhost:8081
+#
+# For a real no-UDP host, put a TLS terminator in front of :7880 (wss) and the
+# token :8080 (https), and set SFU_EXTERNAL_HOST/TCP_PORT to the host's TCP proxy.
+
+services:
+  livekit:
+    build:
+      context: .
+      dockerfile: Dockerfile.livekit
+    environment:
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      # External ICE-TCP endpoint the SFU advertises. Localhost defaults make the
+      # bridge a no-op (EXT==TARGET) for a local smoke test. On a real proxy host
+      # set these to the proxy's domain + assigned public port.
+      - SFU_EXTERNAL_HOST=${SFU_EXTERNAL_HOST:-127.0.0.1}
+      - SFU_EXTERNAL_TCP_PORT=${SFU_EXTERNAL_TCP_PORT:-7881}
+      - SFU_LISTEN_TARGET_PORT=${SFU_LISTEN_TARGET_PORT:-7881}
+    cap_add:
+      - NET_ADMIN # for the iptables redirect when EXT_PORT != TARGET_PORT
+    ports:
+      - '7880:7880' # signaling (put TLS in front for wss on a real host)
+      - '7881:7881' # media ICE-TCP target
+    restart: unless-stopped
+
+  token:
+    build:
+      context: ../..
+      dockerfile: packages/relay/Dockerfile
+    environment:
+      - ROOM_PASSWORD=${ROOM_PASSWORD}
+      - SFU_URL=${SFU_URL:-ws://localhost:7880}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - PORT=8080
+    ports:
+      - '8080:8080'
+    restart: unless-stopped
+
+  beholder:
+    build:
+      context: ../..
+      dockerfile: packages/listener/Dockerfile
+    environment:
+      # Separate host from the relay → inject + lock the endpoint (users enter
+      # room + password). For localhost sim this points at the token service.
+      - LISTENER_TOKEN_ENDPOINT=${LISTENER_TOKEN_ENDPOINT:-http://localhost:8080}
+    ports:
+      - '8081:80'
+    restart: unless-stopped

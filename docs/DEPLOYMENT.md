@@ -44,18 +44,18 @@ WebRTC has two channels with different needs:
 VPS / home box with port-forwarding gives this directly (UDP + TCP). A PaaS that
 only exposes *remapped* proxy ports (like Railway, which also has no UDP) needs a
 startup shim that bridges the assigned proxy port to LiveKit's ICE port and runs
-TCP-only — doable, and what the official LiveKit Railway template does (§5).
+TCP-only — the `deploy/tcp` profile does exactly this (§5).
 
 Browsers on an **http** LAN page can use plain `ws://` (skip TLS). Anything over
 the internet from an **https** page needs `wss://` → TLS (§3).
 
 ---
 
-## 3. Path A — One-stack self-host on a VPS (recommended)
+## 3. Path A — UDP profile (`deploy/udp`, VPS, recommended)
 
-`deploy/docker-compose.yml` brings up the whole backend — SFU + relay + Beholder
-+ Caddy (auto-TLS) — in one command. Beholder is served same-origin with the
-relay, so listeners enter **only room + password**.
+`deploy/udp/docker-compose.yml` brings up the whole backend — SFU + relay +
+Beholder + Caddy (auto-TLS) — in one command. Beholder is served same-origin with
+the relay, so listeners enter **only room + password**.
 
 ### A1. Prerequisites
 - A host with a **public IP** (any small VPS: DigitalOcean, Hetzner, etc.) with
@@ -68,13 +68,13 @@ relay, so listeners enter **only room + password**.
 
 ### A2. Configure + launch
 ```bash
-git clone <this repo> && cd soundsbored-remote-audio/deploy
+git clone <this repo> && cd soundsbored-remote-audio/deploy/udp
 cp .env.example .env
 # edit .env:
 #   DOMAIN=audio.example.com
 #   ROOM_PASSWORD=<a password you distribute>
 #   LIVEKIT_API_KEY=<change from devkey>
-#   LIVEKIT_API_SECRET=<long random secret>
+#   LIVEKIT_API_SECRET=<long random secret, >=32 chars>
 docker compose up -d --build
 ```
 
@@ -105,72 +105,59 @@ curl -X POST https://audio.example.com/token \
 
 ---
 
-## 4. Path B — LAN / localhost (no TLS, simplest)
+## 4. Path B — Local (`deploy/local`, no TLS, simplest)
 
-Every client on your network or your own machine — skip TLS, use `ws://`.
+Full stack (SFU + relay + Beholder) on your own machine — no TLS, `ws://`/`http`.
+Zero-config (dev keys + password `test`):
 
-**Full LAN stack** (SFU + relay, UDP media):
 ```bash
-cd packages/relay
-export ROOM_PASSWORD=test          #  PowerShell: $env:ROOM_PASSWORD="test"
+cd deploy/local
 docker compose up -d --build
-# tokenEndpoint = http://<your-LAN-ip>:8080   (or http://localhost:8080 same box)
-```
-
-**Beholder on the LAN:**
-```bash
-# from repo root (build needs core + contract sources)
-docker build -f packages/listener/Dockerfile -t soundsbored-listener .
-docker run -p 8081:80 \
-  -e LISTENER_TOKEN_ENDPOINT="http://<your-LAN-ip>:8080" \
-  -e LISTENER_ROOM="world1" \
-  soundsbored-listener
-```
-
-**One-command localhost backend** (host-browser reachable, for the M4 gate on one
-box):
-```powershell
-cd packages/relay
-$env:ROOM_PASSWORD="test"
-docker compose -f docker-compose.yml -f docker-compose.localhost.yml up -d --build
 docker compose restart livekit    # the reconnect-blip test
 ```
-Values: tokenEndpoint `http://localhost:8080`, room `world1`, password `test`.
+
+Values: tokenEndpoint `http://localhost:8080`, Beholder `http://localhost:8081`,
+room `world1`, password `test`. For **other machines on your LAN**, edit
+`deploy/local/livekit.yaml`'s `node_ip` to this host's LAN IP and use
+`http://<lan-ip>:8080` as the tokenEndpoint.
+
+> The older `packages/relay/docker-compose.localhost.yml` harness (relay + SFU
+> only, no Beholder) still exists for relay-focused testing; `deploy/local` is the
+> full-stack equivalent.
 
 ---
 
-## 5. Path C — All-Railway (three services, TCP-only)
+## 5. Path C — No-UDP host / Railway (`deploy/tcp`, TCP-only)
 
-Railway maps each compose service to its own Railway service with a public HTTPS
-domain. All three run there — no SaaS — with one wrinkle for the SFU.
+For a PaaS without UDP (Railway et al.). All three run there — no SaaS. The SFU
+uses a **proxy-port bridge**: the platform's TCP proxy assigns a *random* public
+port, so `deploy/tcp/entrypoint.sh` sets LiveKit's advertised ICE port
+(`tcp_port`/`node_ip`) to it and redirects the container's target port there
+(iptables, haproxy fallback). Built from `deploy/tcp/Dockerfile.livekit`.
 
-- ✅ **Relay (token)** — deploy `packages/relay/Dockerfile` as a service. Public
-  domain = your `tokenEndpoint`. Vars: `ROOM_PASSWORD`, `SFU_URL` (the SFU
-  service's `wss://` URL), `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET`. Health check
-  `/healthz`.
-- ✅ **Beholder** — deploy `packages/listener/Dockerfile` as a service. Var
-  `LISTENER_TOKEN_ENDPOINT` = the relay's Railway URL (players enter room +
-  password). *(Separate Railway domains, so not same-origin — the endpoint is
-  injected + locked instead of relative.)*
-- ⚠️ **SFU (`livekit-server`)** — works **TCP-only** (Railway has no UDP). Media
-  rides ICE-TCP on the Railway **TCP Proxy**. Railway assigns a *random* external
-  proxy port, so the SFU needs a **startup entrypoint that reconciles that port
-  with LiveKit's advertised ICE port** (iptables / haproxy bridge). The official
-  LiveKit Railway template ships this — the simplest route is to **deploy the SFU
-  from that template** (it deploys `livekit-server`, not a hosted service), then
-  point the relay's `SFU_URL` at the SFU service's `wss://…up.railway.app` domain.
+- **SFU** — build `deploy/tcp/Dockerfile.livekit`. On Railway: HTTP domain → 7880
+  (wss), TCP Proxy → 7881 (media, bridged automatically).
+- **Relay** — `packages/relay/Dockerfile`. `SFU_URL` = the SFU's wss domain;
+  `ROOM_PASSWORD`, matching `LIVEKIT_API_KEY`/`SECRET`. Its domain = `tokenEndpoint`.
+- **Beholder** — `packages/listener/Dockerfile`. `LISTENER_TOKEN_ENDPOINT` = the
+  relay's URL (players enter room + password).
 
-**Result:** an all-Railway, no-SaaS deployment that carries audio over TCP. TCP
-media is the always-works fallback but stutters under packet loss (head-of-line
-blocking) — for the best audio, prefer the UDP-capable Path A VPS. For a quick
-hosted gate, Railway is fine.
+**Railway:** each compose service maps to its own Railway service — follow the
+exact per-service steps in [`deploy/tcp/RAILWAY.md`](../deploy/tcp/RAILWAY.md).
 
-> **Repo support:** this repo doesn't yet ship a Railway-ready SFU service (the
-> port-bridge entrypoint). Today: use the official template for the SFU +
-> `packages/relay` and `packages/listener` for the other two services. A
-> repo-native `deploy/railway/` SFU (so the whole stack is reproducible from
-> here) is a possible follow-up. CONTRACT C1/C9's Railway TCP-only SFU assumption
-> is **valid** — this is how it's realized.
+**Other no-UDP single host:** run `deploy/tcp/docker-compose.yml` and put a TLS
+proxy in front (§3-style); set `SFU_EXTERNAL_HOST`/`_TCP_PORT` to the host's proxy.
+
+**Local bridge smoke test:** `cd deploy/tcp && cp .env.example .env && docker
+compose up -d --build` — localhost defaults make the bridge a no-op and run the
+stack TCP-only (tokenEndpoint `http://localhost:8080`, Beholder `:8081`).
+
+> TCP-only media is the always-works fallback but stutters under packet loss
+> (head-of-line blocking) — for best audio use the UDP profile (§3). CONTRACT
+> C1/C9's Railway TCP-only SFU is **valid** — this is how it's realized. The
+> bridge follows Railway's documented `RAILWAY_TCP_PROXY_*` vars + LiveKit's ICE
+> rules; **confirm the `livekit-bridge:` log line + a real audio connection on
+> your first Railway deploy.**
 
 ---
 
@@ -226,8 +213,7 @@ With the app publishing and a consumer configured:
 2. **Own volume** — the player's slider changes only their playback.
 3. **Reconnect blip** — restart the SFU mid-stream; audio recovers, pill
    `reconnecting` → `live`:
-   - Path A: `cd deploy && docker compose restart livekit`
-   - Path B: `docker compose restart livekit`
+   `cd deploy/<udp|tcp|local> && docker compose restart livekit`
 4. **Status pill** reflects `connecting` / `live` / `reconnecting` / `disconnected`.
 
 ### Foundry v13 things to eyeball on the first live run
@@ -247,8 +233,8 @@ Beholder web  ───┘    (same-origin for Beholder)                    medi
    every side: same room + password ───────────── audio track ──────────────┘
 ```
 
-- **Path A (VPS):** `deploy/docker-compose.yml` — SFU + relay + Beholder + Caddy,
-  one stack, TLS, no SaaS.
-- **Path B (LAN/localhost):** `packages/relay` compose, plain `http`/`ws`.
-- **Path C (Railway):** all three as Railway services, TCP-only; the SFU uses the
-  official LiveKit template's proxy-port bridge.
+- **Path A — UDP (`deploy/udp`):** VPS + Caddy TLS, UDP media. Best audio. §3.
+- **Path B — Local (`deploy/local`):** own machine / LAN, plain `http`/`ws`. §4.
+- **Path C — TCP (`deploy/tcp`):** no-UDP host / Railway, proxy-port bridge. §5.
+
+See [`deploy/README.md`](../deploy/README.md) for the profile chooser.

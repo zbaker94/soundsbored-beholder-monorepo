@@ -1,0 +1,50 @@
+# Local full stack: SFU + relay + Beholder, no TLS, host-browser reachable.
+# Zero-config for a quick gate (dev keys + password "test" by default):
+#
+#   cd deploy/local
+#   docker compose up -d --build
+#   # tokenEndpoint http://localhost:8080, Beholder http://localhost:8081,
+#   # room world1, password test
+#   docker compose restart livekit    # the reconnect-blip test
+#
+# For OTHER machines on your LAN, edit livekit.yaml's node_ip to this host's LAN
+# IP and use http://<lan-ip>:8080 as the tokenEndpoint.
+
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --config /etc/livekit/livekit.yaml
+    environment:
+      # Secret must be >=32 chars (LiveKit requirement) — dev default below.
+      - 'LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-localdevsecret_at_least_32_chars_long}'
+    volumes:
+      - ./livekit.yaml:/etc/livekit/livekit.yaml:ro
+    ports:
+      - '7880:7880' # signaling (ws — no TLS locally)
+      - '7881:7881' # media ICE-TCP
+    restart: unless-stopped
+
+  token:
+    build:
+      context: ../..
+      dockerfile: packages/relay/Dockerfile
+    environment:
+      - ROOM_PASSWORD=${ROOM_PASSWORD:-test}
+      - SFU_URL=ws://localhost:7880
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-localdevsecret_at_least_32_chars_long}
+      - PORT=8080
+    ports:
+      - '8080:8080'
+    restart: unless-stopped
+
+  beholder:
+    build:
+      context: ../..
+      dockerfile: packages/listener/Dockerfile
+    environment:
+      # Injected + locked; users enter room + password only.
+      - LISTENER_TOKEN_ENDPOINT=http://localhost:8080
+    ports:
+      - '8081:80'
+    restart: unless-stopped

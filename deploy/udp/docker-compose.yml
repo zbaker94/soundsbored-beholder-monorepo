@@ -2,7 +2,7 @@
 # One command brings up an internet-reachable backend with no third-party
 # service. Run from this directory on a host with a public IP and a domain:
 #
-#   cd deploy
+#   cd deploy/udp
 #   cp .env.example .env      # set DOMAIN, ROOM_PASSWORD, LIVEKIT_API_*
 #   docker compose up -d --build
 #
@@ -29,7 +29,7 @@ services:
 
   token:
     build:
-      context: ..
+      context: ../..
       dockerfile: packages/relay/Dockerfile
     environment:
       - ROOM_PASSWORD=${ROOM_PASSWORD}
@@ -41,7 +41,7 @@ services:
 
   beholder:
     build:
-      context: ..
+      context: ../..
       dockerfile: packages/listener/Dockerfile
     environment:
       # Empty (but SET) → the listener hides the endpoint field and POSTs a

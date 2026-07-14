@@ -1,0 +1,14 @@
+# LiveKit SFU for no-UDP hosts: the official server binary + the proxy-port
+# bridge entrypoint (see entrypoint.sh). Built on alpine so we have a shell,
+# iptables, haproxy, and DNS tools the bridge needs.
+FROM livekit/livekit-server:latest AS lk
+
+FROM alpine:3.20
+RUN apk add --no-cache iptables haproxy bind-tools
+# The official image ships the server binary at /livekit-server.
+COPY --from=lk /livekit-server /livekit-server
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && mkdir -p /etc/livekit
+# 7880 = signaling (fronted by the platform's HTTP/TLS edge → wss).
+EXPOSE 7880
+ENTRYPOINT ["/entrypoint.sh"]

@@ -1,0 +1,12 @@
+# LiveKit config for local hosting (host-browser reachable, no TLS).
+# TCP-only on 7881 advertising 127.0.0.1 so a browser on THIS machine reaches the
+# ICE candidate (a container's internal IP is not reachable from the host).
+# Keys come from the LIVEKIT_KEYS env (see docker-compose.yml).
+#
+# For OTHER machines on your LAN: set node_ip to this host's LAN IP (e.g.
+# 192.168.1.50) and, for smoother audio, add `udp_port: 7882` + publish it.
+port: 7880
+rtc:
+  tcp_port: 7881
+  use_external_ip: false
+  node_ip: 127.0.0.1
