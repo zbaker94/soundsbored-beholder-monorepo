@@ -11,6 +11,6 @@
   "esmodules": ["scripts/soundsbored-foundry.js"],
   "styles": ["styles/soundsbored.css"],
   "languages": [{ "lang": "en", "name": "English", "path": "lang/en.json" }],
-  "manifest": "https://github.com/zbaker94/soundsbored-remote-audio/releases/latest/download/module.json",
-  "download": "https://github.com/zbaker94/soundsbored-remote-audio/releases/download/foundry-v0.0.1/module.zip"
+  "manifest": "https://github.com/zbaker94/soundsbored-beholder-monorepo/releases/latest/download/module.json",
+  "download": "https://github.com/zbaker94/soundsbored-beholder-monorepo/releases/download/foundry-v0.0.1/module.zip"
 }
