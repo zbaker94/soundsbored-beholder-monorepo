@@ -1,0 +1,28 @@
+{
+  "name": "@soundsbored/core",
+  "version": "0.0.1",
+  "description": "Framework-agnostic listener core for SoundsBored remote audio (subscribe/play/volume/reconnect)",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run --reporter=verbose"
+  },
+  "dependencies": {
+    "@soundsbored/contract": "*",
+    "livekit-client": "^2.5.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0"
+  }
+}

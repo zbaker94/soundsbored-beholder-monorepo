@@ -6,9 +6,9 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -b packages/contract packages/relay",
+    "build": "tsc -b packages/contract packages/relay packages/core",
     "test": "vitest run --reporter=verbose",
-    "lint": "tsc -b packages/contract packages/relay --noEmit"
+    "lint": "tsc -b packages/contract packages/relay packages/core --noEmit"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
