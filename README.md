@@ -21,7 +21,7 @@ A Tauri soundboard app publishes a live WebRTC audio track to the LiveKit SFU. R
 ## Quick Start (self-host)
 
 ```bash
-cp packages/relay/.env.example .env   # set ROOM_PASSWORD
+cp packages/relay/.env.example packages/relay/.env   # then set ROOM_PASSWORD in it
 docker compose -f packages/relay/docker-compose.yml up
 ```
 
@@ -41,7 +41,8 @@ See [`packages/relay/README.md`](packages/relay/README.md) for full deploy instr
 ```bash
 npm install
 npm test          # run all tests
-npm run build     # typecheck + emit
+npm run build     # typecheck + emit contract, relay, core
+npm run build -w @soundsbored/listener   # listener web app (Vite, built separately)
 ```
 
 See [CONTRACT.md](CONTRACT.md) for the authoritative shared contract: C1–C7 (cross-repo client/server) + C8–C10 (relay operational detail).

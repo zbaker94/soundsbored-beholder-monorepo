@@ -1,7 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { z } from 'zod';
-import { ROLES } from '@soundsbored/contract';
+import { ROLES, type TokenError } from '@soundsbored/contract';
 import { mintToken } from './tokens.js';
 
 const TokenRequestSchema = z.object({
@@ -35,13 +35,13 @@ export function buildServer(deps: BuildServerDeps): FastifyInstance {
   app.post('/token', async (request, reply) => {
     const parsed = TokenRequestSchema.safeParse(request.body);
     if (!parsed.success) {
-      return reply.status(400).send({ error: 'bad request' });
+      return reply.status(400).send({ error: 'bad request' } satisfies TokenError);
     }
 
     const { room, role, password } = parsed.data;
 
     if (password !== roomPassword) {
-      return reply.status(401).send({ error: 'bad password' });
+      return reply.status(401).send({ error: 'bad password' } satisfies TokenError);
     }
 
     tokenSeq += 1;
@@ -54,7 +54,7 @@ export function buildServer(deps: BuildServerDeps): FastifyInstance {
       // No error logging here by design: the security scanner forbids logging in
       // this credential-handling module, and the 500 status already signals the
       // failure. See the accepted-debt note on the error_consistency finding.
-      return reply.status(500).send({ error: 'token generation failed' });
+      return reply.status(500).send({ error: 'token generation failed' } satisfies TokenError);
     }
 
     return reply.status(200).send({ token, url: sfuUrl });
