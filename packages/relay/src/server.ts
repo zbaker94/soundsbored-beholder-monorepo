@@ -50,7 +50,10 @@ export function buildServer(deps: BuildServerDeps): FastifyInstance {
     let token: string;
     try {
       token = await mintToken({ apiKey, apiSecret, identity, room, role });
-    } catch {
+    } catch (err) {
+      // Surface a diagnostic trace instead of a blind 500. mintToken failures are
+      // JWT-signing errors and carry no secret material, so logging is safe here.
+      console.error('token generation failed:', err instanceof Error ? err.message : err);
       return reply.status(500).send({ error: 'token generation failed' });
     }
 

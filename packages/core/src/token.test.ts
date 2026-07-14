@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fetchSubscriberToken, TokenFetchError, type ListenerConfig } from './token.js';
+import { fetchSubscriberToken, parseJwtExp, TokenFetchError, type ListenerConfig } from './token.js';
 
 const config: ListenerConfig = {
   tokenEndpoint: 'http://localhost:8080',
@@ -82,5 +82,27 @@ describe('fetchSubscriberToken', () => {
     await expect(
       fetchSubscriberToken(config, fetchImpl as unknown as typeof fetch),
     ).rejects.toBeInstanceOf(TokenFetchError);
+  });
+});
+
+describe('parseJwtExp', () => {
+  const b64url = (o: unknown): string => Buffer.from(JSON.stringify(o)).toString('base64url');
+
+  it('returns the numeric exp from a well-formed JWT', () => {
+    const token = `${b64url({ alg: 'HS256' })}.${b64url({ exp: 1_800_000_000 })}.sig`;
+    expect(parseJwtExp(token)).toBe(1_800_000_000);
+  });
+
+  it('returns null when the token has fewer than two segments', () => {
+    expect(parseJwtExp('not-a-jwt')).toBeNull();
+  });
+
+  it('returns null when the payload is not valid JSON', () => {
+    expect(parseJwtExp('header.@@notbase64json@@.sig')).toBeNull();
+  });
+
+  it('returns null when exp is absent or not a number', () => {
+    expect(parseJwtExp(`${b64url({})}.${b64url({ foo: 'bar' })}.sig`)).toBeNull();
+    expect(parseJwtExp(`${b64url({})}.${b64url({ exp: 'soon' })}.sig`)).toBeNull();
   });
 });

@@ -22,6 +22,7 @@ export interface Listener {
   attach(el: HTMLAudioElement): void;
   /** Per-listener playback volume, 0..1 (clamped). */
   setVolume(v: number): void;
+  /** Mute or unmute this listener's playback without leaving the room. */
   setMuted(m: boolean): void;
   /** Subscribe to state changes; returns an unsubscribe fn. */
   onState(cb: (s: ListenerState) => void): () => void;

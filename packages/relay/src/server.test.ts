@@ -1,5 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Delegate to the real mintToken by default; individual tests can override it.
+vi.mock('./tokens.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./tokens.js')>();
+  return { ...actual, mintToken: vi.fn(actual.mintToken) };
+});
+
 import { buildServer } from './server.js';
+import { mintToken } from './tokens.js';
 import type { FastifyInstance } from 'fastify';
 
 const TEST_DEPS = {
@@ -115,6 +123,26 @@ describe('POST /token', () => {
     });
     expect(res.statusCode).toBe(400);
     expect(res.json()).toEqual({ error: 'bad request' });
+  });
+
+  it('returns 500 when token minting fails', async () => {
+    vi.mocked(mintToken).mockRejectedValueOnce(new Error('signing failure'));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/token',
+      payload: {
+        room: 'my-room',
+        role: 'publisher',
+        password: 'correct-password',
+      },
+    });
+
+    expect(res.statusCode).toBe(500);
+    expect(res.json()).toEqual({ error: 'token generation failed' });
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
   });
 });
 
