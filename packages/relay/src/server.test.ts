@@ -52,6 +52,14 @@ describe('POST /token', () => {
     const body = res.json();
     expect(typeof body.token).toBe('string');
     expect(body.url).toBe(TEST_DEPS.sfuUrl);
+
+    // Verify subscriber grant in token
+    const [, payloadB64] = body.token.split('.');
+    const payload = JSON.parse(
+      Buffer.from(payloadB64, 'base64url').toString('utf8'),
+    );
+    expect(payload.video.canPublish).toBe(false);
+    expect(payload.video.canSubscribe).toBe(true);
   });
 
   it('returns 401 with bad password', async () => {

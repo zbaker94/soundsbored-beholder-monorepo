@@ -45,7 +45,12 @@ export function buildServer(deps: BuildServerDeps): FastifyInstance {
     _counter += 1;
     const identity = `${role}-${room}-${_counter}`;
 
-    const token = await mintToken({ apiKey, apiSecret, identity, room, role });
+    let token: string;
+    try {
+      token = await mintToken({ apiKey, apiSecret, identity, room, role });
+    } catch {
+      return reply.status(500).send({ error: 'token generation failed' });
+    }
 
     return reply.status(200).send({ token, url: sfuUrl });
   });
