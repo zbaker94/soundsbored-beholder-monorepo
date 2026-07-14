@@ -101,6 +101,29 @@ describe('listener DOM wiring', () => {
     expect($<HTMLInputElement>('password').value).toBe('p');
   });
 
+  it('restores saved playback prefs (volume + mute) on load', async () => {
+    localStorage.setItem('soundsbored.listener.prefs', JSON.stringify({ volume: 0.3, muted: true }));
+    await loadMain();
+
+    expect($<HTMLInputElement>('volume').value).toBe('0.3');
+    const muteBtn = $<HTMLButtonElement>('muteBtn');
+    expect(muteBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(muteBtn.textContent).toBe('Muted');
+  });
+
+  it('persists volume + mute changes to storage', async () => {
+    await loadMain();
+    const volume = $<HTMLInputElement>('volume');
+    volume.value = '0.25';
+    volume.dispatchEvent(new Event('input'));
+    $<HTMLButtonElement>('muteBtn').click();
+
+    expect(JSON.parse(localStorage.getItem('soundsbored.listener.prefs')!)).toEqual({
+      volume: 0.25,
+      muted: true,
+    });
+  });
+
   it('shows a validation error and does not connect when room/password are blank', async () => {
     await loadMain();
     $<HTMLButtonElement>('enable').click();

@@ -1,5 +1,27 @@
 import { describe, it, expect } from 'vitest';
-import { buildConfig, parseSavedConfig, resolveField } from './config.js';
+import { buildConfig, parseSavedConfig, parseSavedPrefs, resolveField } from './config.js';
+
+describe('parseSavedPrefs', () => {
+  it('returns {} for null / non-JSON / non-object', () => {
+    expect(parseSavedPrefs(null)).toEqual({});
+    expect(parseSavedPrefs('nope{')).toEqual({});
+    expect(parseSavedPrefs('42')).toEqual({});
+  });
+
+  it('keeps a valid volume + muted', () => {
+    expect(parseSavedPrefs('{"volume":0.4,"muted":true}')).toEqual({ volume: 0.4, muted: true });
+  });
+
+  it('drops out-of-range volume and non-boolean muted', () => {
+    expect(parseSavedPrefs('{"volume":2,"muted":"yes"}')).toEqual({});
+    expect(parseSavedPrefs('{"volume":-0.1}')).toEqual({});
+  });
+
+  it('keeps only the fields present', () => {
+    expect(parseSavedPrefs('{"volume":0}')).toEqual({ volume: 0 });
+    expect(parseSavedPrefs('{"muted":false}')).toEqual({ muted: false });
+  });
+});
 
 describe('parseSavedConfig', () => {
   it('returns {} for null (nothing stored)', () => {

@@ -1,10 +1,11 @@
 import '@fontsource-variable/figtree';
 import { createListener, TokenFetchError } from '@soundsbored/core';
 import type { Listener, ListenerConfig, ListenerState } from '@soundsbored/core';
-import { buildConfig, parseSavedConfig, resolveField } from './config.js';
+import { buildConfig, parseSavedConfig, parseSavedPrefs, resolveField } from './config.js';
 import './style.css';
 
 const STORAGE_KEY = 'soundsbored.listener.config';
+const PREFS_KEY = 'soundsbored.listener.prefs';
 
 declare global {
   interface Window {
@@ -50,8 +51,28 @@ function saveConfig(config: ListenerConfig): void {
   }
 }
 
+function readPrefs(): ReturnType<typeof parseSavedPrefs> {
+  try {
+    return parseSavedPrefs(localStorage.getItem(PREFS_KEY));
+  } catch {
+    return {};
+  }
+}
+
+function savePrefs(): void {
+  try {
+    localStorage.setItem(
+      PREFS_KEY,
+      JSON.stringify({ volume: Number(els.volume.value), muted }),
+    );
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+}
+
 const defaults = window.__SOUNDSBORED__ ?? {};
 const saved = readSaved();
+const savedPrefs = readPrefs();
 
 // Operator-locked fields are filled and their label hidden; the rest stay editable.
 function applyField(input: HTMLInputElement, key: 'tokenEndpoint' | 'room'): void {
@@ -88,7 +109,7 @@ function setConnected(connected: boolean): void {
   els.password.disabled = connected;
 }
 
-let muted = false;
+let muted = savedPrefs.muted ?? false;
 function setMuted(next: boolean): void {
   muted = next;
   els.muteBtn.setAttribute('aria-pressed', String(muted));
@@ -145,7 +166,16 @@ async function stop(): Promise<void> {
 
 els.enable.addEventListener('click', () => void start());
 els.stop.addEventListener('click', () => void stop());
-els.volume.addEventListener('input', () => listener?.setVolume(Number(els.volume.value)));
-els.muteBtn.addEventListener('click', () => setMuted(!muted));
+els.volume.addEventListener('input', () => {
+  listener?.setVolume(Number(els.volume.value));
+  savePrefs();
+});
+els.muteBtn.addEventListener('click', () => {
+  setMuted(!muted);
+  savePrefs();
+});
 
+// Restore saved playback prefs into the UI (start() reads these on connect).
+els.volume.value = String(savedPrefs.volume ?? Number(els.volume.value));
+setMuted(muted);
 showState('disconnected');

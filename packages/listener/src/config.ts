@@ -45,3 +45,30 @@ export function buildConfig(
   if (!trimmedRoom || !password) return null;
   return { tokenEndpoint: tokenEndpoint.trim(), room: trimmedRoom, password };
 }
+
+/** Per-listener playback preferences, persisted separately from the connection
+ *  config so a returning listener keeps their own volume + mute. */
+export interface ListenerPrefs {
+  volume: number;
+  muted: boolean;
+}
+
+/** Parse persisted playback prefs from a raw localStorage value, keeping only
+ *  valid fields (volume clamped to 0..1). Returns {} for absent/invalid data. */
+export function parseSavedPrefs(raw: string | null): Partial<ListenerPrefs> {
+  if (!raw) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return {};
+  }
+  if (!parsed || typeof parsed !== 'object') return {};
+  const rec = parsed as Record<string, unknown>;
+  const prefs: Partial<ListenerPrefs> = {};
+  if (typeof rec.volume === 'number' && rec.volume >= 0 && rec.volume <= 1) {
+    prefs.volume = rec.volume;
+  }
+  if (typeof rec.muted === 'boolean') prefs.muted = rec.muted;
+  return prefs;
+}
