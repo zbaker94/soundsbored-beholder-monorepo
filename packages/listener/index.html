@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SoundsBored — Listener</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔊</text></svg>" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="head">
+        <h1>🔊 SoundsBored</h1>
+        <span id="state" class="pill pill--disconnected" role="status">disconnected</span>
+      </header>
+
+      <section class="config" aria-label="connection settings">
+        <label>
+          Token endpoint
+          <input id="tokenEndpoint" type="url" placeholder="http://localhost:8080" autocomplete="off" />
+        </label>
+        <label>
+          Room
+          <input id="room" type="text" placeholder="spike" autocomplete="off" />
+        </label>
+        <label>
+          Password
+          <input id="password" type="password" placeholder="room password" autocomplete="off" />
+        </label>
+      </section>
+
+      <section class="controls">
+        <button id="enable" type="button" class="primary">Enable audio</button>
+        <button id="stop" type="button" hidden>Stop</button>
+      </section>
+
+      <section class="mix" aria-label="playback">
+        <label class="vol">
+          Volume
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="1" />
+        </label>
+        <label class="mute">
+          <input id="muted" type="checkbox" /> Mute
+        </label>
+      </section>
+
+      <p id="error" class="error" role="alert" hidden></p>
+
+      <!-- caller-owned element the core attaches the subscribed track to -->
+      <audio id="audio" autoplay></audio>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

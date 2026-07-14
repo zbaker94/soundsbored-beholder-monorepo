@@ -1,0 +1,172 @@
+:root {
+  color-scheme: dark;
+  --bg: #12141a;
+  --panel: #1b1e27;
+  --border: #2b303d;
+  --text: #e7e9ee;
+  --muted: #9aa0ad;
+  --accent: #5b8cff;
+  --live: #38c172;
+  --reconnecting: #f2b705;
+  --disconnected: #6b7280;
+  --error: #ff6b6b;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--text);
+  padding: 1.5rem;
+}
+
+.app {
+  width: 100%;
+  max-width: 26rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.head h1 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.pill--connecting {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.pill--live {
+  color: var(--live);
+  border-color: color-mix(in srgb, var(--live) 45%, transparent);
+  background: color-mix(in srgb, var(--live) 14%, transparent);
+}
+
+.pill--reconnecting {
+  color: var(--reconnecting);
+  border-color: color-mix(in srgb, var(--reconnecting) 45%, transparent);
+  background: color-mix(in srgb, var(--reconnecting) 14%, transparent);
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+.pill--disconnected {
+  color: var(--disconnected);
+  border-color: var(--border);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.config,
+.controls,
+.mix {
+  display: grid;
+  gap: 0.75rem;
+}
+
+label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input[type='url'],
+input[type='text'],
+input[type='password'] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+input:disabled {
+  opacity: 0.6;
+}
+
+button {
+  border: none;
+  border-radius: 9px;
+  padding: 0.7rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--border);
+}
+
+button.primary {
+  background: var(--accent);
+  color: #0b1020;
+}
+
+button:hover {
+  filter: brightness(1.08);
+}
+
+.mix {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.vol {
+  color: var(--text);
+}
+
+.vol input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.mute {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text);
+  align-self: end;
+}
+
+.error {
+  margin: 0;
+  color: var(--error);
+  font-size: 0.85rem;
+}
