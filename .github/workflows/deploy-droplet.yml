@@ -1,0 +1,50 @@
+# Continuous deploy of the self-host stack (deploy/udp) to the droplet over SSH.
+# Fires when the deployed code/config changes on main; also runnable on demand.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   DROPLET_HOST     the droplet's public IP or hostname
+#   DROPLET_USER     ssh user (e.g. root)
+#   DROPLET_SSH_KEY  a PRIVATE key whose public half is in the droplet's
+#                    ~/.ssh/authorized_keys (generate a deploy-only keypair)
+#   DROPLET_APP_DIR  absolute path to the repo checkout on the droplet
+#                    (e.g. /root/soundsbored-beholder-monorepo)
+#
+# The droplet's deploy/udp/.env is gitignored and stays put across pulls.
+name: Deploy to droplet
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/relay/**'
+      - 'packages/listener/**'
+      - 'packages/core/**'
+      - 'packages/contract/**'
+      - 'deploy/udp/**'
+      - '.github/workflows/deploy-droplet.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-droplet
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.DROPLET_APP_DIR }}"
+            git fetch --prune origin
+            git checkout main
+            git pull --ff-only
+            cd deploy/udp
+            docker compose up -d --build
+            docker compose ps
+            docker image prune -f

@@ -210,6 +210,24 @@ repo on GitHub — no other service.
 
 ---
 
+## 7b. Continuous deploy to the droplet (optional)
+
+`.github/workflows/deploy-droplet.yml` redeploys the `deploy/udp` stack over SSH
+whenever the deployed code/config changes on `main` (or on manual dispatch) — no
+more hand-SSH + `git pull`. Set these repo **Actions secrets**:
+
+| Secret | Value |
+|--------|-------|
+| `DROPLET_HOST` | droplet public IP / hostname |
+| `DROPLET_USER` | ssh user (e.g. `root`) |
+| `DROPLET_SSH_KEY` | a **private** key whose public half is in the droplet's `~/.ssh/authorized_keys` (make a deploy-only keypair) |
+| `DROPLET_APP_DIR` | repo checkout path on the droplet (e.g. `/root/soundsbored-beholder-monorepo`) |
+
+It runs `git pull --ff-only` + `docker compose up -d --build` in `deploy/udp`. The
+droplet's `.env` is gitignored and survives pulls. Triggers only on changes under
+`packages/{relay,listener,core,contract}` or `deploy/udp` (Foundry-only changes
+don't redeploy the backend).
+
 ## 8. Verification / the M4 gate
 
 With the app publishing and a consumer configured:
