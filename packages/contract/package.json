@@ -1,0 +1,20 @@
+{
+  "name": "@soundsbored/contract",
+  "version": "0.0.1",
+  "description": "Shared contract types for SoundsBored remote audio token API",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  }
+}

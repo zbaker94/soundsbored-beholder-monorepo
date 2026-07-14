@@ -1,0 +1,30 @@
+{
+  "name": "@soundsbored/relay",
+  "version": "0.0.1",
+  "description": "LiveKit token mint endpoint for SoundsBored remote audio",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run --reporter=verbose",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.0",
+    "@soundsbored/contract": "*",
+    "fastify": "^5.0.0",
+    "livekit-server-sdk": "^2.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "vitest": "^2.0.0"
+  }
+}

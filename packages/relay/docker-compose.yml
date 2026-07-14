@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --config /etc/livekit/livekit.yaml
+    volumes:
+      - ./livekit.selfhost.yaml:/etc/livekit/livekit.yaml:ro
+    ports:
+      - '7880:7880'
+      - '7881:7881'
+      - '7882:7882/udp'
+
+  token:
+    build:
+      context: ../..
+      dockerfile: packages/relay/Dockerfile
+    environment:
+      - ROOM_PASSWORD=${ROOM_PASSWORD}
+      - SFU_URL=${SFU_URL:-ws://livekit:7880}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+      - PORT=8080
+    ports:
+      - '8080:8080'
+    depends_on:
+      - livekit
