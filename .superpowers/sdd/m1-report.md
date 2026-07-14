@@ -129,4 +129,67 @@ packages/relay/README.md
 
 ---
 
-Report written: 2026-07-14
+## M1 Review Fixes Applied
+
+**Commit SHA**: 422be16  
+**Commit Subject**: fix(relay): guard token minting errors, gitignore tsbuildinfo, add dockerignore + subscriber grant test
+
+### Fix 1 (Important) — Guard mintToken errors in server.ts
+Wrapped `mintToken()` call in try/catch to prevent API secrets leaking in Fastify 500 error responses.
+
+**Changed**: `packages/relay/src/server.ts` (lines 45-50)
+- Declared `let token: string`
+- Wrapped `await mintToken({...})` in try/catch
+- Catch block returns `reply.status(500).send({ error: 'token generation failed' })`
+- Preserved existing response and variable names
+
+### Fix 2 — gitignore + untrack tsbuildinfo
+Added `*.tsbuildinfo` to `.gitignore` and removed two committed files from tracking.
+
+**Changed**:
+- `.gitignore` — added `*.tsbuildinfo` line
+- `git rm --cached packages/contract/tsconfig.tsbuildinfo packages/relay/tsconfig.tsbuildinfo`
+
+### Fix 3 — add .dockerignore
+Created `.dockerignore` at repo root with: `node_modules`, `.git`, `*.tsbuildinfo`, `dist`
+
+**Created**: `.dockerignore`
+
+### Fix 4 — subscriber grant end-to-end test
+Enhanced `packages/relay/src/server.test.ts` subscriber test to decode JWT and verify grant.
+
+**Changed**: `packages/relay/src/server.test.ts` (subscriber 200 test, lines 41-55)
+- Added JWT decode logic (split on '.', base64url-decode payload)
+- Assert `payload.video.canPublish === false`
+- Assert `payload.video.canSubscribe === true`
+- Kept existing status + url assertions
+
+### Test Results
+
+```
+npm test
+
+vitest run --reporter=verbose
+
+ ✓ packages/relay/src/tokens.test.ts > buildGrant > publisher grant has canPublish true and canSubscribe false
+ ✓ packages/relay/src/tokens.test.ts > buildGrant > subscriber grant has canPublish false and canSubscribe true
+ ✓ packages/relay/src/tokens.test.ts > mintToken > returns a non-empty JWT string
+ ✓ packages/relay/src/tokens.test.ts > mintToken > decoded payload contains expected video grant and sub identity for publisher
+ ✓ packages/relay/src/tokens.test.ts > mintToken > decoded payload contains expected video grant for subscriber
+ ✓ packages/relay/src/server.test.ts > POST /token > returns 200 with token and url for valid publisher request
+ ✓ packages/relay/src/server.test.ts > POST /token > returns 200 with token and url for valid subscriber request
+ ✓ packages/relay/src/server.test.ts > POST /token > returns 401 with bad password
+ ✓ packages/relay/src/server.test.ts > POST /token > returns 400 for missing room field
+ ✓ packages/relay/src/server.test.ts > POST /token > returns 400 for invalid role
+ ✓ packages/relay/src/server.test.ts > POST /token > returns 400 for empty password in body
+ ✓ packages/relay/src/server.test.ts > GET /healthz > returns 200 with ok: true
+
+ Test Files  2 passed (2)
+       Tests  12 passed (12)
+    Duration  613ms
+```
+
+---
+
+Report written: 2026-07-14  
+Review fixes applied: 2026-07-14
