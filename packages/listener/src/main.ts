@@ -123,9 +123,13 @@ async function start(): Promise<void> {
   listener.onState(showState);
 
   setConnected(true);
+  // Prime playback inside the click gesture: connect() is async, and the user
+  // activation that unlocks autoplay can expire before the track arrives. Playing
+  // now (even before there's a source) blesses the element so the real playback
+  // after the track subscribes isn't blocked (NotAllowedError).
+  void els.audio.play().catch(() => undefined);
   try {
     await listener.connect();
-    // playback is unlocked by this click gesture
     await els.audio.play().catch(() => undefined);
   } catch (err) {
     showError(connectErrorMessage(err));

@@ -62,8 +62,25 @@ describe('createAudioController', () => {
     expect(fake.listener.setVolume).toHaveBeenCalledWith(0.5);
     expect(fake.listener.setMuted).toHaveBeenCalledWith(true);
     expect(fake.listener.connect).toHaveBeenCalledOnce();
-    expect(audio.play).toHaveBeenCalledOnce();
+    // Plays twice: once to prime playback inside the gesture (before connect),
+    // once after the track subscribes.
+    expect(audio.play).toHaveBeenCalledTimes(2);
     expect(c.isJoined()).toBe(true);
+  });
+
+  it('primes playback within the gesture before connecting', async () => {
+    const order: string[] = [];
+    (audio.play as unknown as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      order.push('play');
+    });
+    fake.listener.connect.mockImplementation(async () => {
+      order.push('connect');
+    });
+    const c = build();
+    await c.join();
+    // First play happens before connect resolves (gesture capture).
+    expect(order[0]).toBe('play');
+    expect(order).toContain('connect');
   });
 
   it('leave() disconnects and removes the audio element', async () => {

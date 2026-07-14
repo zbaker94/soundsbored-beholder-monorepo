@@ -71,6 +71,11 @@ export function createAudioController(deps: AudioControllerDeps): AudioControlle
       l.attach(audio);
       l.setVolume(volume);
       l.setMuted(muted);
+      // Prime playback inside the caller's gesture: connect() is async and the
+      // user activation that unlocks autoplay can expire before the track
+      // arrives. Playing now (even before there's a source) blesses the element
+      // so the real playback after the track subscribes isn't blocked.
+      void audio.play().catch(() => undefined);
       try {
         await l.connect();
       } catch (err) {
@@ -79,7 +84,7 @@ export function createAudioController(deps: AudioControllerDeps): AudioControlle
         setState('disconnected');
         throw err;
       }
-      // Unlock playback via the caller's gesture; ignore autoplay rejections.
+      // Play again once the track is subscribed (the primed element is unlocked).
       await audio.play().catch(() => undefined);
     },
 
