@@ -40,10 +40,11 @@ WebRTC has two channels with different needs:
    the client connects to exactly that. It **cannot** sit behind an L4 proxy that
    remaps the port (the advertised port must equal the reachable port).
 
-**Consequence:** you need a host where you can open the media ports directly. A
-VPS or a home box with port-forwarding works. A PaaS that only exposes remapped
-proxy ports (Railway) can host the token endpoint + Beholder but **not** the SFU
-media — see §5.
+**Consequence:** the SFU's advertised media port must equal its reachable port. A
+VPS / home box with port-forwarding gives this directly (UDP + TCP). A PaaS that
+only exposes *remapped* proxy ports (like Railway, which also has no UDP) needs a
+startup shim that bridges the assigned proxy port to LiveKit's ICE port and runs
+TCP-only — doable, and what the official LiveKit Railway template does (§5).
 
 Browsers on an **http** LAN page can use plain `ws://` (skip TLS). Anything over
 the internet from an **https** page needs `wss://` → TLS (§3).
@@ -138,31 +139,38 @@ Values: tokenEndpoint `http://localhost:8080`, room `world1`, password `test`.
 
 ---
 
-## 5. Path C — Railway (partial: token + Beholder only)
+## 5. Path C — All-Railway (three services, TCP-only)
 
 Railway maps each compose service to its own Railway service with a public HTTPS
-domain (see Railway's docker-compose guide). That's fine for the two **HTTP**
-pieces, but **not** for the SFU:
+domain. All three run there — no SaaS — with one wrinkle for the SFU.
 
 - ✅ **Relay (token)** — deploy `packages/relay/Dockerfile` as a service. Public
-  domain = your `tokenEndpoint`. Vars: `ROOM_PASSWORD`, `SFU_URL` (your SFU's
-  `wss://` URL), `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET`. Health check `/healthz`.
+  domain = your `tokenEndpoint`. Vars: `ROOM_PASSWORD`, `SFU_URL` (the SFU
+  service's `wss://` URL), `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET`. Health check
+  `/healthz`.
 - ✅ **Beholder** — deploy `packages/listener/Dockerfile` as a service. Var
   `LISTENER_TOKEN_ENDPOINT` = the relay's Railway URL (players enter room +
   password). *(Separate Railway domains, so not same-origin — the endpoint is
-  injected + locked instead.)*
-- ❌ **SFU (`livekit-server`)** — Railway exposes services through a proxy that
-  **remaps ports** and offers **no UDP**. LiveKit needs its media port reachable
-  at the advertised number (§2), so the SFU's audio won't flow on Railway.
+  injected + locked instead of relative.)*
+- ⚠️ **SFU (`livekit-server`)** — works **TCP-only** (Railway has no UDP). Media
+  rides ICE-TCP on the Railway **TCP Proxy**. Railway assigns a *random* external
+  proxy port, so the SFU needs a **startup entrypoint that reconciles that port
+  with LiveKit's advertised ICE port** (iptables / haproxy bridge). The official
+  LiveKit Railway template ships this — the simplest route is to **deploy the SFU
+  from that template** (it deploys `livekit-server`, not a hosted service), then
+  point the relay's `SFU_URL` at the SFU service's `wss://…up.railway.app` domain.
 
-**So a Railway-only deployment can't carry audio.** Run the SFU where you control
-ports (Path A's VPS, or a PaaS with direct UDP/TCP port mapping) and point the
-Railway relay's `SFU_URL` at it. In practice, if you already have that box, run
-the whole Path A stack there and skip Railway.
+**Result:** an all-Railway, no-SaaS deployment that carries audio over TCP. TCP
+media is the always-works fallback but stutters under packet loss (head-of-line
+blocking) — for the best audio, prefer the UDP-capable Path A VPS. For a quick
+hosted gate, Railway is fine.
 
-> **Plan/contract note:** CONTRACT C1/C9 assume a Railway-hosted TCP-only SFU.
-> That assumption is untested and, per LiveKit's port rules, doubtful. Flagged
-> for a contract review — the working path is a VPS (Path A).
+> **Repo support:** this repo doesn't yet ship a Railway-ready SFU service (the
+> port-bridge entrypoint). Today: use the official template for the SFU +
+> `packages/relay` and `packages/listener` for the other two services. A
+> repo-native `deploy/railway/` SFU (so the whole stack is reproducible from
+> here) is a possible follow-up. CONTRACT C1/C9's Railway TCP-only SFU assumption
+> is **valid** — this is how it's realized.
 
 ---
 
@@ -242,5 +250,5 @@ Beholder web  ───┘    (same-origin for Beholder)                    medi
 - **Path A (VPS):** `deploy/docker-compose.yml` — SFU + relay + Beholder + Caddy,
   one stack, TLS, no SaaS.
 - **Path B (LAN/localhost):** `packages/relay` compose, plain `http`/`ws`.
-- **Path C (Railway):** token + Beholder only; SFU must live where ports are
-  directly reachable.
+- **Path C (Railway):** all three as Railway services, TCP-only; the SFU uses the
+  official LiveKit template's proxy-port bridge.
