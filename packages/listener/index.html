@@ -3,49 +3,104 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SoundsBored — Listener</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔊</text></svg>" />
+    <title>SoundsBored: Beholder</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>👁️</text></svg>"
+    />
+    <!-- runtime config (regenerated from env in Docker) -->
+    <script src="./config.js"></script>
   </head>
   <body>
-    <main class="app">
-      <header class="head">
-        <h1>🔊 SoundsBored</h1>
-        <span id="state" class="pill pill--disconnected" role="status">disconnected</span>
+    <main class="niche" id="niche" data-state="disconnected">
+      <div class="grain" aria-hidden="true"></div>
+
+      <header class="crest">
+        <h1 class="title"><span>SoundsBored</span><em>: Beholder</em></h1>
+        <p class="tagline">remote audio for the table</p>
       </header>
 
-      <section class="config" aria-label="connection settings">
-        <label>
-          Token endpoint
-          <input id="tokenEndpoint" type="url" placeholder="http://localhost:8080" autocomplete="off" />
-        </label>
-        <label>
-          Room
-          <input id="room" type="text" placeholder="spike" autocomplete="off" />
-        </label>
-        <label>
-          Password
-          <input id="password" type="password" placeholder="room password" autocomplete="off" />
-        </label>
+      <!-- signature: the beholder's eye IS the connection state -->
+      <section class="oracle" aria-label="connection">
+        <svg class="arch" viewBox="0 0 240 320" role="img" aria-hidden="true">
+          <defs>
+            <radialGradient id="iris" cx="50%" cy="50%" r="60%">
+              <stop offset="0%" class="iris-hot" />
+              <stop offset="55%" class="iris-mid" />
+              <stop offset="100%" class="iris-rim" />
+            </radialGradient>
+            <radialGradient id="glow" cx="50%" cy="46%" r="55%">
+              <stop offset="0%" class="glow-core" />
+              <stop offset="100%" class="glow-edge" />
+            </radialGradient>
+          </defs>
+
+          <!-- torch glow -->
+          <rect class="halo" x="0" y="0" width="240" height="320" fill="url(#glow)" />
+
+          <!-- eyestalks around the crown -->
+          <g class="stalks">
+            <g class="stalk"><path d="M120 34 L96 8" /><circle cx="94" cy="6" r="5" /></g>
+            <g class="stalk"><path d="M120 34 L120 2" /><circle cx="120" cy="2" r="5" /></g>
+            <g class="stalk"><path d="M120 34 L144 8" /><circle cx="146" cy="6" r="5" /></g>
+            <g class="stalk"><path d="M120 34 L70 22" /><circle cx="66" cy="20" r="4" /></g>
+            <g class="stalk"><path d="M120 34 L170 22" /><circle cx="174" cy="20" r="4" /></g>
+          </g>
+
+          <!-- ogee arch keyline -->
+          <path
+            class="frame"
+            d="M34 300 L34 168 C34 96 74 52 120 40 C166 52 206 96 206 168 L206 300 Z"
+          />
+
+          <!-- the eye -->
+          <g class="eye" transform="translate(120 176)">
+            <path class="sclera" d="M-70 0 C-40 -46 40 -46 70 0 C40 46 -40 46 -70 0 Z" />
+            <clipPath id="socket">
+              <path d="M-70 0 C-40 -46 40 -46 70 0 C40 46 -40 46 -70 0 Z" />
+            </clipPath>
+            <g clip-path="url(#socket)">
+              <circle class="iris" r="38" fill="url(#iris)" />
+              <circle class="pupil" r="16" />
+              <circle class="glint" cx="-12" cy="-12" r="5" />
+              <rect class="lid lid-top" x="-72" y="-48" width="144" height="48" />
+              <rect class="lid lid-bot" x="-72" y="0" width="144" height="48" />
+            </g>
+          </g>
+        </svg>
+        <p class="status" id="status" role="status">disconnected</p>
       </section>
 
-      <section class="controls">
-        <button id="enable" type="button" class="primary">Enable audio</button>
-        <button id="stop" type="button" hidden>Stop</button>
-      </section>
-
-      <section class="mix" aria-label="playback">
-        <label class="vol">
-          Volume
-          <input id="volume" type="range" min="0" max="1" step="0.01" value="1" />
+      <section class="scroll" aria-label="settings">
+        <label>
+          <span>Token endpoint</span>
+          <input id="tokenEndpoint" type="url" placeholder="https://relay.example.com" autocomplete="off" />
         </label>
-        <label class="mute">
-          <input id="muted" type="checkbox" /> Mute
+        <label>
+          <span>Room</span>
+          <input id="room" type="text" placeholder="the-session" autocomplete="off" />
+        </label>
+        <label>
+          <span>Password</span>
+          <input id="password" type="password" placeholder="shared room password" autocomplete="off" />
         </label>
       </section>
 
       <p id="error" class="error" role="alert" hidden></p>
 
-      <!-- caller-owned element the core attaches the subscribed track to -->
+      <section class="deck">
+        <button id="enable" type="button" class="sigil">Enable audio</button>
+        <button id="stop" type="button" class="ghost" hidden>Stop listening</button>
+      </section>
+
+      <section class="mix" aria-label="playback">
+        <label class="vol">
+          <span>Volume</span>
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="1" />
+        </label>
+        <button id="muteBtn" type="button" class="mute" aria-pressed="false">Mute</button>
+      </section>
+
       <audio id="audio" autoplay></audio>
     </main>
     <script type="module" src="/src/main.ts"></script>

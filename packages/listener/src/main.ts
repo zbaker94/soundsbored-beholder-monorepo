@@ -1,8 +1,15 @@
+import '@fontsource-variable/figtree';
 import { createListener, TokenFetchError } from '@soundsbored/core';
 import type { Listener, ListenerConfig, ListenerState } from '@soundsbored/core';
 import './style.css';
 
 const STORAGE_KEY = 'soundsbored.listener.config';
+
+declare global {
+  interface Window {
+    __SOUNDSBORED__?: Partial<ListenerConfig>;
+  }
+}
 
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -11,21 +18,22 @@ const $ = <T extends HTMLElement>(id: string): T => {
 };
 
 const els = {
+  niche: $<HTMLElement>('niche'),
   tokenEndpoint: $<HTMLInputElement>('tokenEndpoint'),
   room: $<HTMLInputElement>('room'),
   password: $<HTMLInputElement>('password'),
   enable: $<HTMLButtonElement>('enable'),
   stop: $<HTMLButtonElement>('stop'),
   volume: $<HTMLInputElement>('volume'),
-  muted: $<HTMLInputElement>('muted'),
-  state: $<HTMLSpanElement>('state'),
+  muteBtn: $<HTMLButtonElement>('muteBtn'),
+  status: $<HTMLParagraphElement>('status'),
   error: $<HTMLParagraphElement>('error'),
   audio: $<HTMLAudioElement>('audio'),
 };
 
-// --- config persistence -----------------------------------------------------
+// --- config: server-injected defaults < saved user input --------------------
 
-function loadConfig(): Partial<ListenerConfig> {
+function loadSaved(): Partial<ListenerConfig> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? (JSON.parse(raw) as Partial<ListenerConfig>) : {};
@@ -42,24 +50,26 @@ function saveConfig(config: ListenerConfig): void {
   }
 }
 
-const saved = loadConfig();
-els.tokenEndpoint.value = saved.tokenEndpoint ?? '';
-els.room.value = saved.room ?? '';
+const defaults = window.__SOUNDSBORED__ ?? {};
+const saved = loadSaved();
+els.tokenEndpoint.value = saved.tokenEndpoint ?? defaults.tokenEndpoint ?? '';
+els.room.value = saved.room ?? defaults.room ?? '';
 els.password.value = saved.password ?? '';
 
 function readConfig(): ListenerConfig | null {
   const tokenEndpoint = els.tokenEndpoint.value.trim();
   const room = els.room.value.trim();
   const password = els.password.value;
-  if (!tokenEndpoint || !room || !password) return null;
+  // tokenEndpoint may be empty for a same-origin deploy (relative /token).
+  if (!room || !password) return null;
   return { tokenEndpoint, room, password };
 }
 
-// --- ui state ---------------------------------------------------------------
+// --- ui ---------------------------------------------------------------------
 
 function showState(state: ListenerState): void {
-  els.state.textContent = state;
-  els.state.className = `pill pill--${state}`;
+  els.niche.dataset.state = state;
+  els.status.textContent = state;
 }
 
 function showError(message: string | null): void {
@@ -75,6 +85,14 @@ function setConnected(connected: boolean): void {
   els.password.disabled = connected;
 }
 
+let muted = false;
+function setMuted(next: boolean): void {
+  muted = next;
+  els.muteBtn.setAttribute('aria-pressed', String(muted));
+  els.muteBtn.textContent = muted ? 'Muted' : 'Mute';
+  listener?.setMuted(muted);
+}
+
 // --- listener wiring --------------------------------------------------------
 
 let listener: Listener | null = null;
@@ -82,7 +100,7 @@ let listener: Listener | null = null;
 async function enable(): Promise<void> {
   const config = readConfig();
   if (!config) {
-    showError('Fill in token endpoint, room, and password.');
+    showError('Enter a room and password.');
     return;
   }
   showError(null);
@@ -91,7 +109,7 @@ async function enable(): Promise<void> {
   listener = createListener(config);
   listener.attach(els.audio);
   listener.setVolume(Number(els.volume.value));
-  listener.setMuted(els.muted.checked);
+  listener.setMuted(muted);
   listener.onState(showState);
 
   setConnected(true);
@@ -103,7 +121,7 @@ async function enable(): Promise<void> {
     const message =
       err instanceof TokenFetchError
         ? err.status === 401
-          ? 'Bad password.'
+          ? 'Wrong password.'
           : `Token endpoint error (${err.status ?? 'unreachable'}).`
         : 'Could not connect.';
     showError(message);
@@ -120,6 +138,6 @@ async function stop(): Promise<void> {
 els.enable.addEventListener('click', () => void enable());
 els.stop.addEventListener('click', () => void stop());
 els.volume.addEventListener('input', () => listener?.setVolume(Number(els.volume.value)));
-els.muted.addEventListener('change', () => listener?.setMuted(els.muted.checked));
+els.muteBtn.addEventListener('click', () => setMuted(!muted));
 
 showState('disconnected');

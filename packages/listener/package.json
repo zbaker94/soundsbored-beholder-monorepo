@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource-variable/figtree": "^5.0.0",
     "@soundsbored/contract": "*",
     "@soundsbored/core": "*"
   },
