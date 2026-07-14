@@ -1,0 +1,16 @@
+# Local-dev LiveKit only (host-browser ICE via TCP-only 127.0.0.1).
+# Run the relay token endpoint + listener from the host (not containerized) so
+# you can iterate:
+#   docker compose -f packages/relay/docker-compose.localdev.yml up -d
+#   ROOM_PASSWORD=test SFU_URL=ws://localhost:7880 node packages/relay/dist/index.js
+#   npm -w @soundsbored/listener run dev
+# For the full self-host stack (LiveKit + token image) use docker-compose.yml instead.
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --config /etc/livekit/livekit.yaml
+    ports:
+      - '7880:7880'
+      - '7881:7881'
+    volumes:
+      - ./livekit.localdev.yaml:/etc/livekit/livekit.yaml:ro

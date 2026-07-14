@@ -1,0 +1,12 @@
+# Local-dev LiveKit config for host-browser verification (M2 listener / M3 publisher).
+# TCP-only media on 7881, advertising 127.0.0.1 so a host browser can reach ICE
+# candidates (Docker's internal container IP is NOT reachable from the host).
+# Mirrors the Railway TCP-only deploy path. NOT for production — dev keys only.
+port: 7880
+rtc:
+  tcp_port: 7881
+  # No udp_port / port_range -> media is ICE-TCP only (all over 7881).
+  use_external_ip: false
+  node_ip: 127.0.0.1
+keys:
+  devkey: secret
