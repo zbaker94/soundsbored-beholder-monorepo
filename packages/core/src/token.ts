@@ -1,6 +1,6 @@
 import type { TokenRequest, TokenResponse } from '@soundsbored/contract';
 
-/** Everything a listener needs to obtain a subscriber token (Shared Contract C6). */
+/** Everything a listener needs to obtain a subscriber token (Shared Contract C4). */
 export interface ListenerConfig {
   tokenEndpoint: string;
   room: string;
@@ -21,8 +21,14 @@ export class TokenFetchError extends Error {
 }
 
 /**
- * POST /token with role 'subscriber' (C4) and return `{ token, url }` (C6).
- * Throws {@link TokenFetchError} on a non-2xx response or a network failure.
+ * POST /token with role 'subscriber' and return `{ token, url }` (Shared Contract C4).
+ * Throws {@link TokenFetchError} on a network failure, a non-2xx response, or a
+ * 2xx body missing a usable `token`/`url`.
+ *
+ * `fetchImpl` is a single positional override (test seam); this stays a plain
+ * positional arg rather than a deps bag because it's the only collaborator here.
+ * The higher-level {@link createListener} takes a `deps` object instead because
+ * it injects several collaborators (fetch + Room factory).
  */
 export async function fetchSubscriberToken(
   config: ListenerConfig,

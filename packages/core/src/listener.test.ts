@@ -40,8 +40,17 @@ class FakeRoom {
     return this;
   }
 
+  off(event: string, cb: Handler): this {
+    const list = this.handlers.get(event);
+    if (list) {
+      const i = list.indexOf(cb);
+      if (i !== -1) list.splice(i, 1);
+    }
+    return this;
+  }
+
   emit(event: string, ...args: unknown[]): void {
-    for (const cb of this.handlers.get(event) ?? []) cb(...args);
+    for (const cb of [...(this.handlers.get(event) ?? [])]) cb(...args);
   }
 }
 
@@ -309,6 +318,114 @@ describe('createListener token refresh', () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     expect(rooms).toHaveLength(2);
+  });
+
+  it('keeps the live connection when the refresh token fetch fails', async () => {
+    vi.setSystemTime(new Date('2026-07-14T00:00:00Z'));
+    const token = makeJwt(Math.floor(Date.now() / 1000) + 120);
+
+    const rooms: FakeRoom[] = [];
+    let call = 0;
+    const fetchImpl = vi.fn(async () => {
+      call += 1;
+      if (call === 1) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ token, url: 'ws://localhost:7880' }),
+        };
+      }
+      throw new Error('endpoint down');
+    }) as unknown as typeof fetch;
+
+    const l = createListener(config, {
+      createRoom: () => {
+        const r = new FakeRoom();
+        rooms.push(r);
+        return r as never;
+      },
+      fetchImpl,
+    });
+
+    await l.connect();
+    rooms[0].emit('trackSubscribed', fakeAudioTrack(), {}, {});
+    expect(l.getState()).toBe('live');
+
+    // Refresh fires, token fetch throws — old room stays, no new room, still live.
+    await vi.advanceTimersByTimeAsync(91_000);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(rooms).toHaveLength(1);
+    expect(l.getState()).toBe('live');
+  });
+
+  it('keeps the old room live when the refresh reconnect fails', async () => {
+    vi.setSystemTime(new Date('2026-07-14T00:00:00Z'));
+    const token = makeJwt(Math.floor(Date.now() / 1000) + 120);
+
+    const rooms: FakeRoom[] = [];
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ token, url: 'ws://localhost:7880' }),
+    })) as unknown as typeof fetch;
+
+    const l = createListener(config, {
+      createRoom: () => {
+        const r = new FakeRoom();
+        // The second (refresh) room fails to connect.
+        if (rooms.length === 1) {
+          r.connect = vi.fn(async () => {
+            throw new Error('reconnect failed');
+          });
+        }
+        rooms.push(r);
+        return r as never;
+      },
+      fetchImpl,
+    });
+
+    await l.connect();
+    rooms[0].emit('trackSubscribed', fakeAudioTrack(), {}, {});
+    expect(l.getState()).toBe('live');
+
+    await vi.advanceTimersByTimeAsync(91_000);
+    // New room was attempted and torn down; old room never disconnected.
+    expect(rooms).toHaveLength(2);
+    expect(rooms[1].disconnect).toHaveBeenCalled();
+    expect(rooms[0].disconnect).not.toHaveBeenCalled();
+    expect(l.getState()).toBe('live');
+  });
+
+  it('does not leak a spurious disconnect from the swapped-out room after refresh', async () => {
+    vi.setSystemTime(new Date('2026-07-14T00:00:00Z'));
+    const token = makeJwt(Math.floor(Date.now() / 1000) + 120);
+
+    const rooms: FakeRoom[] = [];
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ token, url: 'ws://localhost:7880' }),
+    })) as unknown as typeof fetch;
+
+    const l = createListener(config, {
+      createRoom: () => {
+        const r = new FakeRoom();
+        rooms.push(r);
+        return r as never;
+      },
+      fetchImpl,
+    });
+
+    await l.connect();
+    rooms[0].emit('trackSubscribed', fakeAudioTrack(), {}, {});
+    // New room comes up live, then old room is torn down.
+    await vi.advanceTimersByTimeAsync(91_000);
+    rooms[1].emit('trackSubscribed', fakeAudioTrack(), {}, {});
+    expect(l.getState()).toBe('live');
+
+    // The discarded room's teardown fires Disconnected — must be ignored.
+    rooms[0].emit('disconnected');
+    expect(l.getState()).toBe('live');
   });
 });
 

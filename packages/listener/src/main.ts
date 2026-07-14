@@ -1,6 +1,7 @@
 import '@fontsource-variable/figtree';
 import { createListener, TokenFetchError } from '@soundsbored/core';
 import type { Listener, ListenerConfig, ListenerState } from '@soundsbored/core';
+import { buildConfig, parseSavedConfig, resolveField } from './config.js';
 import './style.css';
 
 const STORAGE_KEY = 'soundsbored.listener.config';
@@ -33,10 +34,9 @@ const els = {
 
 // --- config: server-injected defaults < saved user input --------------------
 
-function loadSaved(): Partial<ListenerConfig> {
+function readSaved(): Partial<ListenerConfig> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Partial<ListenerConfig>) : {};
+    return parseSavedConfig(localStorage.getItem(STORAGE_KEY));
   } catch {
     return {};
   }
@@ -51,17 +51,13 @@ function saveConfig(config: ListenerConfig): void {
 }
 
 const defaults = window.__SOUNDSBORED__ ?? {};
-const saved = loadSaved();
+const saved = readSaved();
 
-// A key present in the server config is operator-locked: fill it, hide the
-// field (it's not the listener's to set). An absent key stays user-editable.
+// Operator-locked fields are filled and their label hidden; the rest stay editable.
 function applyField(input: HTMLInputElement, key: 'tokenEndpoint' | 'room'): void {
-  if (key in defaults) {
-    input.value = defaults[key] ?? '';
-    input.closest('label')?.setAttribute('hidden', '');
-  } else {
-    input.value = saved[key] ?? '';
-  }
+  const { value, locked } = resolveField(key, defaults, saved);
+  input.value = value;
+  if (locked) input.closest('label')?.setAttribute('hidden', '');
 }
 
 applyField(els.tokenEndpoint, 'tokenEndpoint');
@@ -69,12 +65,7 @@ applyField(els.room, 'room');
 els.password.value = saved.password ?? '';
 
 function readConfig(): ListenerConfig | null {
-  const tokenEndpoint = els.tokenEndpoint.value.trim();
-  const room = els.room.value.trim();
-  const password = els.password.value;
-  // tokenEndpoint may be empty for a same-origin deploy (relative /token).
-  if (!room || !password) return null;
-  return { tokenEndpoint, room, password };
+  return buildConfig(els.tokenEndpoint.value, els.room.value, els.password.value);
 }
 
 // --- ui ---------------------------------------------------------------------
@@ -109,7 +100,14 @@ function setMuted(next: boolean): void {
 
 let listener: Listener | null = null;
 
-async function enable(): Promise<void> {
+/** Map a failed connect() into a user-facing message. */
+function connectErrorMessage(err: unknown): string {
+  if (!(err instanceof TokenFetchError)) return 'Could not connect.';
+  if (err.status === 401) return 'Wrong password.';
+  return `Token endpoint error (${err.status ?? 'unreachable'}).`;
+}
+
+async function start(): Promise<void> {
   const config = readConfig();
   if (!config) {
     showError('Enter a room and password.');
@@ -130,13 +128,7 @@ async function enable(): Promise<void> {
     // playback is unlocked by this click gesture
     await els.audio.play().catch(() => undefined);
   } catch (err) {
-    const message =
-      err instanceof TokenFetchError
-        ? err.status === 401
-          ? 'Wrong password.'
-          : `Token endpoint error (${err.status ?? 'unreachable'}).`
-        : 'Could not connect.';
-    showError(message);
+    showError(connectErrorMessage(err));
     await stop();
   }
 }
@@ -147,7 +139,7 @@ async function stop(): Promise<void> {
   setConnected(false);
 }
 
-els.enable.addEventListener('click', () => void enable());
+els.enable.addEventListener('click', () => void start());
 els.stop.addEventListener('click', () => void stop());
 els.volume.addEventListener('input', () => listener?.setVolume(Number(els.volume.value)));
 els.muteBtn.addEventListener('click', () => setMuted(!muted));

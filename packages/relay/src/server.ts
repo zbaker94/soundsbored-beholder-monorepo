@@ -1,14 +1,12 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { z } from 'zod';
-import { ROLES, type TokenRequest } from '@soundsbored/contract';
+import { ROLES } from '@soundsbored/contract';
 import { mintToken } from './tokens.js';
-
-let _counter = 0;
 
 const TokenRequestSchema = z.object({
   room: z.string().min(1),
-  role: z.enum(ROLES as [TokenRequest['role'], ...TokenRequest['role'][]]),
+  role: z.enum(ROLES),
   password: z.string().min(1),
 });
 
@@ -21,6 +19,10 @@ interface BuildServerDeps {
 
 export function buildServer(deps: BuildServerDeps): FastifyInstance {
   const { apiKey, apiSecret, roomPassword, sfuUrl } = deps;
+
+  // Per-server monotonic suffix for participant identities — scoped to this
+  // instance so separate buildServer() calls (e.g. tests) don't share state.
+  let tokenSeq = 0;
 
   const app = Fastify({ logger: false });
 
@@ -36,14 +38,14 @@ export function buildServer(deps: BuildServerDeps): FastifyInstance {
       return reply.status(400).send({ error: 'bad request' });
     }
 
-    const { room, role, password } = parsed.data as TokenRequest;
+    const { room, role, password } = parsed.data;
 
     if (password !== roomPassword) {
       return reply.status(401).send({ error: 'bad password' });
     }
 
-    _counter += 1;
-    const identity = `${role}-${room}-${_counter}`;
+    tokenSeq += 1;
+    const identity = `${role}-${room}-${tokenSeq}`;
 
     let token: string;
     try {

@@ -6,6 +6,8 @@ A Tauri soundboard app publishes a live WebRTC audio track to the LiveKit SFU. R
 
 - **`@soundsbored/contract`** — shared TypeScript types for the token API
 - **`@soundsbored/relay`** — Fastify HTTP service that mints LiveKit JWT tokens + LiveKit server configs
+- **`@soundsbored/core`** — framework-agnostic listener: subscribe, play, per-listener volume, reconnect
+- **`@soundsbored/listener`** — standalone self-host web listener (Vite) built on `core`
 
 ## Packages
 
@@ -42,4 +44,4 @@ npm test          # run all tests
 npm run build     # typecheck + emit
 ```
 
-See [CONTRACT.md](CONTRACT.md) for the authoritative shared contract: C1–C7 (cross-repo client/server) + C8–C10 (relay operational detail).
+See [CONTRACT.md](CONTRACT.md) for the authoritative shared contract (C1–C7).
