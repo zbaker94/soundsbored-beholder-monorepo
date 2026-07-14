@@ -127,7 +127,6 @@ describe('POST /token', () => {
 
   it('returns 500 when token minting fails', async () => {
     vi.mocked(mintToken).mockRejectedValueOnce(new Error('signing failure'));
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const res = await app.inject({
       method: 'POST',
@@ -141,8 +140,6 @@ describe('POST /token', () => {
 
     expect(res.statusCode).toBe(500);
     expect(res.json()).toEqual({ error: 'token generation failed' });
-    expect(errSpy).toHaveBeenCalled();
-    errSpy.mockRestore();
   });
 });
 
