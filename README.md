@@ -17,6 +17,7 @@ A Tauri soundboard app publishes a live WebRTC audio track to the LiveKit SFU. R
 | `packages/relay` | Token mint endpoint (`POST /token`), LiveKit configs, Docker setup |
 | `packages/core` | `listener-core` — subscribe/play/per-listener volume/reconnect (framework-agnostic) |
 | `packages/listener` | Standalone self-host web listener (Vite) over `core` |
+| `packages/foundry` | Foundry VTT module — thin shell over `core` (player audio panel, GM config, CI release) |
 
 ## Quick Start (self-host)
 
