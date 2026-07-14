@@ -4,6 +4,10 @@ import path from 'path';
 export default defineConfig({
   resolve: {
     alias: {
+      '@soundsbored/core': path.resolve(
+        import.meta.dirname,
+        'packages/core/src/index.ts',
+      ),
       '@soundsbored/contract': path.resolve(
         import.meta.dirname,
         'packages/contract/src/index.ts',
