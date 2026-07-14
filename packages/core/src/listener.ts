@@ -79,13 +79,31 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
     setState('live');
   }
 
-  function wireRoom(r: Room): void {
-    r.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
-    r.on(RoomEvent.Reconnecting, () => setState('reconnecting'));
-    r.on(RoomEvent.Reconnected, () => {
+  function onTrackUnsubscribed(t: RemoteTrack): void {
+    if (t !== track) return;
+    if (el) t.detach(el);
+    track = null;
+    // Still joined to the room — just waiting for the publisher to (re)appear.
+    if (room) setState('connecting');
+  }
+
+  function onReconnected(): void {
+    // livekit auto-resubscribes surviving tracks; a new one arrives via
+    // TrackSubscribed. Only claim 'live' if we actually hold a track — if the
+    // publisher left during the blip, stay 'connecting' until it re-publishes.
+    if (track) {
       attachTrack();
       setState('live');
-    });
+    } else {
+      setState('connecting');
+    }
+  }
+
+  function wireRoom(r: Room): void {
+    r.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
+    r.on(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
+    r.on(RoomEvent.Reconnecting, () => setState('reconnecting'));
+    r.on(RoomEvent.Reconnected, onReconnected);
     r.on(RoomEvent.Disconnected, () => setState('disconnected'));
   }
 

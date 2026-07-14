@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('livekit-client', () => ({
   RoomEvent: {
     TrackSubscribed: 'trackSubscribed',
+    TrackUnsubscribed: 'trackUnsubscribed',
     Reconnecting: 'reconnecting',
     Reconnected: 'reconnected',
     Disconnected: 'disconnected',
@@ -179,6 +180,52 @@ describe('createListener', () => {
     expect(l.getState()).toBe('live');
     // re-attached the current track after the blip
     expect(track.attach).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops to connecting (still in room) when the track is unsubscribed', async () => {
+    const l = createListener(config, makeDeps());
+    const el = fakeElement();
+    l.attach(el);
+    await l.connect();
+
+    const track = fakeAudioTrack();
+    room.emit('trackSubscribed', track, {}, {});
+    expect(l.getState()).toBe('live');
+
+    // publisher leaves -> livekit unsubscribes the track
+    room.emit('trackUnsubscribed', track, {}, {});
+    expect(track.detach).toHaveBeenCalledWith(el);
+    expect(l.getState()).toBe('connecting');
+  });
+
+  it('Reconnected with no active track stays connecting, not a false live', async () => {
+    const l = createListener(config, makeDeps());
+    l.attach(fakeElement());
+    await l.connect();
+    // never received a track (or lost it) before the blip
+    room.emit('reconnecting');
+    room.emit('reconnected');
+    expect(l.getState()).toBe('connecting');
+  });
+
+  it('goes live again when the publisher re-publishes after a reconnect', async () => {
+    const l = createListener(config, makeDeps());
+    const el = fakeElement();
+    l.attach(el);
+    await l.connect();
+
+    const first = fakeAudioTrack();
+    room.emit('trackSubscribed', first, {}, {});
+    room.emit('trackUnsubscribed', first, {}, {}); // publisher dropped
+    room.emit('reconnecting');
+    room.emit('reconnected');
+    expect(l.getState()).toBe('connecting');
+
+    // publisher back -> fresh track subscribed
+    const second = fakeAudioTrack();
+    room.emit('trackSubscribed', second, {}, {});
+    expect(second.attach).toHaveBeenCalledWith(el);
+    expect(l.getState()).toBe('live');
   });
 
   it('sets disconnected on RoomEvent.Disconnected', async () => {
