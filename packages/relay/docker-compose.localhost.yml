@@ -1,0 +1,30 @@
+# Host-browser localhost validation with the relay ALSO dockerized.
+#
+# Layer this over the base stack:
+#   docker compose -f docker-compose.yml -f docker-compose.localhost.yml up -d --build
+#
+# vs the other modes:
+#   docker-compose.yml alone            → real self-host (livekit.selfhost.yaml, UDP,
+#                                          use_external_ip) — a host browser CANNOT reach
+#                                          its ICE candidates.
+#   docker-compose.localdev.yml alone   → LiveKit only; run the relay from the host.
+#   base + THIS                         → LiveKit (TCP-only loopback) + relay, both in
+#                                          Docker, reachable from the host browser/app.
+#
+# Overrides two things the base stack gets wrong for localhost:
+#   1. LiveKit config → livekit.localdev.yaml (use_external_ip:false, node_ip:127.0.0.1,
+#      TCP-only 7881) so the SFU advertises a loopback ICE candidate the host can reach.
+#   2. token SFU_URL → ws://localhost:7880. The base compose defaults SFU_URL to the
+#      docker-internal ws://livekit:7880, which is unreachable from the host — the token
+#      endpoint would hand clients a dead url.
+#
+# Still requires ROOM_PASSWORD in the environment (never hardcode a password here):
+#   $env:ROOM_PASSWORD="test"   # PowerShell
+#   export ROOM_PASSWORD=test   # bash
+services:
+  livekit:
+    volumes:
+      - ./livekit.localdev.yaml:/etc/livekit/livekit.yaml:ro
+  token:
+    environment:
+      - SFU_URL=ws://localhost:7880
