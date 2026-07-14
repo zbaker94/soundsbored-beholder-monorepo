@@ -11,7 +11,12 @@
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "baseUrl": ".",
+    "paths": {
+      "@soundsbored/core": ["../core/src/index.ts"],
+      "@soundsbored/contract": ["../contract/src/index.ts"]
+    }
   },
   "include": ["src", "vite.config.ts"]
 }
