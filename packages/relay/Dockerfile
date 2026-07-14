@@ -11,7 +11,7 @@ COPY tsconfig.base.json ./
 COPY packages/contract/ ./packages/contract/
 COPY packages/relay/ ./packages/relay/
 
-RUN npm run build
+RUN npm -w @soundsbored/relay run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
