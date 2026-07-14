@@ -39,6 +39,8 @@ export interface ListenerDeps {
 
 /** Re-fetch the token this many ms before it expires. */
 const REFRESH_SKEW_MS = 30_000;
+/** After a failed refresh, retry this often until the current token expires. */
+const REFRESH_RETRY_MS = 15_000;
 
 /**
  * Framework-agnostic listener: subscribes to the single remote audio track (C5),
@@ -56,6 +58,8 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
   let muted = false;
   let state: ListenerState = 'disconnected';
   let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The token currently in use — bounds how long refresh retries keep trying. */
+  let currentToken: string | null = null;
 
   const stateListeners = new Set<(s: ListenerState) => void>();
 
@@ -155,13 +159,31 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
 
   function scheduleRefresh(token: string): void {
     clearRefresh();
+    currentToken = token;
     const exp = parseJwtExp(token);
     if (exp == null) return;
     const fireIn = exp * 1000 - Date.now() - REFRESH_SKEW_MS;
-    if (fireIn <= 0) return;
+    // Already inside the skew window (e.g. a slow retry) — refresh very soon.
+    if (fireIn <= 0) {
+      scheduleRetry();
+      return;
+    }
     refreshTimer = setTimeout(() => {
       void refresh();
     }, fireIn);
+  }
+
+  /** Re-attempt a failed refresh after a short delay, but only while the current
+   *  token still has life left; once it expires there's nothing to preserve and
+   *  livekit's own reconnect takes over. */
+  function scheduleRetry(): void {
+    clearRefresh();
+    if (currentToken == null) return;
+    const exp = parseJwtExp(currentToken);
+    if (exp != null && exp * 1000 <= Date.now()) return;
+    refreshTimer = setTimeout(() => {
+      void refresh();
+    }, REFRESH_RETRY_MS);
   }
 
   /** Proactive token refresh: livekit-client has no live-token setter, so fetch a
@@ -175,15 +197,18 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
     try {
       ({ token, url } = await fetchSubscriberToken(config, fetchImpl));
     } catch {
-      // No fresh token: the existing Room + livekit auto-reconnect still stand,
-      // and we can't reconnect without one. Bail; the old timer already fired.
+      // No fresh token yet: the existing Room + livekit auto-reconnect still
+      // stand. Keep retrying so we get a valid token before the current expires.
+      scheduleRetry();
       return;
     }
     let next: Room;
     try {
       next = await openRoom(url, token);
     } catch {
-      // New Room failed to connect — discard it and keep the current one live.
+      // New Room failed to connect — discard it, keep the current one live, and
+      // retry the whole refresh shortly.
+      scheduleRetry();
       return;
     }
     const previous = room;
@@ -212,6 +237,7 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
 
     async disconnect(): Promise<void> {
       clearRefresh();
+      currentToken = null;
       if (track && el) track.detach(el);
       track = null;
       const r = room;

@@ -358,6 +358,44 @@ describe('createListener token refresh', () => {
     expect(l.getState()).toBe('live');
   });
 
+  it('retries a failed refresh and swaps in a fresh room on a later attempt', async () => {
+    vi.setSystemTime(new Date('2026-07-14T00:00:00Z'));
+    const token = makeJwt(Math.floor(Date.now() / 1000) + 120);
+
+    const rooms: FakeRoom[] = [];
+    let call = 0;
+    const fetchImpl = vi.fn(async () => {
+      call += 1;
+      // First refresh (call 2) fails; the retry (call 3) succeeds.
+      if (call === 2) throw new Error('endpoint down');
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ token, url: 'ws://localhost:7880' }),
+      };
+    }) as unknown as typeof fetch;
+
+    const l = createListener(config, {
+      createRoom: () => {
+        const r = new FakeRoom();
+        rooms.push(r);
+        return r as never;
+      },
+      fetchImpl,
+    });
+
+    await l.connect();
+    rooms[0].emit('trackSubscribed', fakeAudioTrack(), {}, {});
+
+    // Refresh at exp-30s fails; a retry is scheduled 15s later and succeeds.
+    await vi.advanceTimersByTimeAsync(91_000); // failed refresh
+    expect(rooms).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(15_000); // retry succeeds
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(rooms).toHaveLength(2);
+    expect(l.getState()).toBe('live');
+  });
+
   it('keeps the old room live when the refresh reconnect fails', async () => {
     vi.setSystemTime(new Date('2026-07-14T00:00:00Z'));
     const token = makeJwt(Math.floor(Date.now() / 1000) + 120);
