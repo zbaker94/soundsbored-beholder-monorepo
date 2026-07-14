@@ -43,14 +43,18 @@ export function createAudioController(deps: AudioControllerDeps): AudioControlle
 
   let listener: Listener | null = null;
   let el: HTMLAudioElement | null = null;
+  let unsubListenerState: (() => void) | null = null;
 
   const stateListeners = new Set<(s: ListenerState) => void>();
   function setState(next: ListenerState): void {
+    if (next === state) return;
     state = next;
     for (const cb of stateListeners) cb(next);
   }
 
   function teardown(): void {
+    unsubListenerState?.();
+    unsubListenerState = null;
     el?.remove();
     el = null;
     listener = null;
@@ -63,7 +67,7 @@ export function createAudioController(deps: AudioControllerDeps): AudioControlle
       const audio = makeAudioEl();
       listener = l;
       el = audio;
-      l.onState(setState);
+      unsubListenerState = l.onState(setState);
       l.attach(audio);
       l.setVolume(volume);
       l.setMuted(muted);

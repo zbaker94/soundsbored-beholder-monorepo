@@ -10,7 +10,6 @@ declare global {
       set(namespace: string, key: string, value: unknown): Promise<unknown>;
     };
     user?: { isGM: boolean };
-    i18n?: { localize(key: string): string };
   };
 
   const ui: {
@@ -42,6 +41,8 @@ declare global {
     render(force?: boolean): Promise<unknown> | unknown;
     close(): Promise<unknown> | unknown;
     readonly element: HTMLElement;
+    _prepareContext(options?: any): Promise<any>;
+    _onRender(context?: any, options?: any): void;
   }
   interface FoundryApplicationV2Ctor {
     new (...args: any[]): FoundryApplicationV2Instance;

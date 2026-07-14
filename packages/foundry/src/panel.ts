@@ -51,10 +51,11 @@ export class SoundsBoredPanel extends HandlebarsApplicationMixin(ApplicationV2) 
   }
 
   // Rendering context consumed by panel.hbs.
-  _prepareContext(): Record<string, unknown> {
+  async _prepareContext(options?: unknown): Promise<Record<string, unknown>> {
+    const context = await super._prepareContext(options);
     const config = resolveConfig(get);
     const state = (this.#controller?.getState() ?? 'disconnected') as ListenerState;
-    return {
+    return Object.assign(context, {
       configured: config !== null,
       isGM: game.user?.isGM ?? false,
       joined: this.#controller?.isJoined() ?? false,
@@ -62,11 +63,12 @@ export class SoundsBoredPanel extends HandlebarsApplicationMixin(ApplicationV2) 
       stateLabel: STATE_LABELS[state],
       volume: Number(get(SETTINGS.volume) ?? 1),
       muted: Boolean(get(SETTINGS.muted) ?? false),
-    };
+    });
   }
 
   // Wire the range + checkbox inputs after each render (buttons use data-action).
-  _onRender(): void {
+  _onRender(context?: unknown, options?: unknown): void {
+    super._onRender(context, options);
     const root = this.element;
     root.querySelector<HTMLInputElement>('input[name="volume"]')?.addEventListener('input', (ev) => {
       const v = Number((ev.currentTarget as HTMLInputElement).value);

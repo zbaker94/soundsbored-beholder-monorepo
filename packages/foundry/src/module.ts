@@ -47,7 +47,7 @@ Hooks.once('init', () => {
 });
 
 // v13: getSceneControlButtons receives an object keyed by control name.
-Hooks.on('getSceneControlButtons', (controls: Record<string, any>) => {
+Hooks.on('getSceneControlButtons', (controls: Record<string, unknown>) => {
   controls[MODULE_ID] = {
     name: MODULE_ID,
     title: 'SoundsBored Audio',
