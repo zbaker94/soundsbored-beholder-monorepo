@@ -47,3 +47,7 @@ npm run build -w @soundsbored/listener   # listener web app (Vite, built separat
 ```
 
 See [CONTRACT.md](CONTRACT.md) for the authoritative shared contract: C1–C7 (cross-repo client/server) + C8–C10 (relay operational detail).
+
+## Deploying
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full self-host + Railway deployment guide covering the relay/SFU, the Foundry module, and the Beholder listener.
