@@ -41,7 +41,7 @@ function renderDom(): void {
     <label><span>Room</span><input id="room" type="text" /></label>
     <label><span>Password</span><input id="password" type="password" /></label>
     <p id="error" hidden></p>
-    <button id="enable" type="button">Enable audio</button>
+    <button id="enable" type="button">Start Listening</button>
     <button id="stop" type="button" hidden>Stop listening</button>
     <input id="volume" type="range" min="0" max="1" step="0.01" value="1" />
     <button id="muteBtn" type="button" aria-pressed="false">Mute</button>
