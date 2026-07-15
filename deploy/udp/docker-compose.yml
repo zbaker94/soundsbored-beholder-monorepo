@@ -45,10 +45,12 @@ services:
       context: ../..
       dockerfile: packages/listener/Dockerfile
     environment:
-      # Injected + locked → the listener hides the endpoint field and POSTs to the
-      # relay host (cross-origin; relay CORS is `*`). LISTENER_ROOM is left unset
-      # so users enter the room themselves (password is never injected).
+      # Injected + shown read-only ("set by host"): the endpoint (relay host,
+      # cross-origin — relay CORS is `*`) and the room. Only the password stays
+      # for the listener to enter. Leave ROOM unset in .env to let listeners pick
+      # the room instead.
       - LISTENER_TOKEN_ENDPOINT=https://${RELAY_HOST}
+      - LISTENER_ROOM=${ROOM}
     restart: unless-stopped
 
   caddy:

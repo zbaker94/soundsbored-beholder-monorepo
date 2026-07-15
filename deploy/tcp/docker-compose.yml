@@ -54,9 +54,10 @@ services:
       context: ../..
       dockerfile: packages/listener/Dockerfile
     environment:
-      # Separate host from the relay → inject + lock the endpoint (users enter
-      # room + password). For localhost sim this points at the token service.
+      # Endpoint + room injected + shown read-only (users enter only the
+      # password). For localhost sim the endpoint points at the token service.
       - LISTENER_TOKEN_ENDPOINT=${LISTENER_TOKEN_ENDPOINT:-http://localhost:8080}
+      - LISTENER_ROOM=${ROOM:-world1}
     ports:
       - '8081:80'
     restart: unless-stopped

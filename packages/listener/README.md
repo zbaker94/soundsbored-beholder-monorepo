@@ -17,12 +17,13 @@ Aliases `@soundsbored/core` + `@soundsbored/contract` to source, so no prior
 
 Each listener needs `{ tokenEndpoint, room, password }` (Shared Contract C6):
 - **In the UI** — fields persist to `localStorage`.
-- **Server-locked** (Docker) — any `LISTENER_*` var you set becomes a key in
-  `window.__SOUNDSBORED__` (`/config.js`), and the app **hides** that field
-  (operator config, not the listener's to change). Unset vars stay editable.
-  Password is never server-injected.
-- Same-origin deploy: set `LISTENER_TOKEN_ENDPOINT=""` (empty) — the field
-  hides and core POSTs a relative `/token`.
+- **Server-set** (Docker) — a `LISTENER_*` var becomes a key in
+  `window.__SOUNDSBORED__` (`/config.js`), and the app shows that field
+  **read-only** ("set by host") — operator config, informational, not editable.
+  Unset vars stay editable. Password is never server-injected.
+- `LISTENER_TOKEN_ENDPOINT` is applied even when empty (empty = same-origin,
+  a relative `/token`). `LISTENER_ROOM` is applied only when non-empty (an empty
+  room stays editable).
 
 ## Docker (self-host, runtime env config)
 
@@ -43,5 +44,5 @@ static build with SPA fallback.
 
 | Env var                   | Purpose                                  |
 |---------------------------|------------------------------------------|
-| `LISTENER_TOKEN_ENDPOINT` | Default token endpoint (empty = same-origin) |
-| `LISTENER_ROOM`           | Default room name                        |
+| `LISTENER_TOKEN_ENDPOINT` | Host-set token endpoint, read-only (empty = same-origin) |
+| `LISTENER_ROOM`           | Host-set room, read-only (unset/empty = listener-editable) |

@@ -76,6 +76,7 @@ cp .env.example .env
 # edit .env:
 #   BEHOLDER_HOST=beholder.example.com
 #   RELAY_HOST=relay.example.com
+#   ROOM=world1                     # baked into Beholder, shown read-only (empty = listener picks)
 #   ROOM_PASSWORD=<a password you distribute>
 #   LIVEKIT_API_KEY=<change from devkey>
 #   LIVEKIT_API_SECRET=<long random secret, >=32 chars>

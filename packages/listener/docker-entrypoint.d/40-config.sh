@@ -2,10 +2,10 @@
 # Regenerate the runtime config from env vars on container start.
 # Runs via nginx:alpine's /docker-entrypoint.d/ hook before nginx launches.
 #
-# A key is emitted only when its env var is SET (even if empty). The app treats
-# a present key as operator-locked: it hides that input entirely. An absent key
-# leaves the field editable by the listener. Password is never injected.
-# For a same-origin deploy set LISTENER_TOKEN_ENDPOINT="" (empty -> relative /token).
+# A present key is operator-locked: the app shows it read-only ("set by host").
+# tokenEndpoint is emitted whenever SET (even empty — empty means same-origin,
+# a relative /token). room is emitted only when NON-empty (an empty room is
+# meaningless, so it stays editable). Password is never injected.
 set -eu
 
 CONFIG=/usr/share/nginx/html/config.js
@@ -18,7 +18,7 @@ esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
   if [ "${LISTENER_TOKEN_ENDPOINT+x}" ]; then
     printf '  tokenEndpoint: "%s",\n' "$(esc "$LISTENER_TOKEN_ENDPOINT")"
   fi
-  if [ "${LISTENER_ROOM+x}" ]; then
+  if [ -n "${LISTENER_ROOM:-}" ]; then
     printf '  room: "%s",\n' "$(esc "$LISTENER_ROOM")"
   fi
   printf '};\n'

@@ -43,8 +43,9 @@ services:
       context: ../..
       dockerfile: packages/listener/Dockerfile
     environment:
-      # Injected + locked; users enter room + password only.
+      # Endpoint + room baked in (shown read-only); users enter only the password.
       - LISTENER_TOKEN_ENDPOINT=http://localhost:8080
+      - LISTENER_ROOM=${ROOM:-world1}
     ports:
       - '8081:80'
     restart: unless-stopped
