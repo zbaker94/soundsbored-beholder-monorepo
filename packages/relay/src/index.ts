@@ -33,7 +33,7 @@ export function resolveConfig(env: NodeJS.ProcessEnv): ServerConfig {
 export async function start(env: NodeJS.ProcessEnv = process.env): Promise<string> {
   const { port, deps } = resolveConfig(env);
   const app = buildServer(deps);
-  return app.listen({ port, host: '0.0.0.0' });
+  return await app.listen({ port, host: '0.0.0.0' });
 }
 
 /** True when this module is the process entry point (run directly, not imported). */
