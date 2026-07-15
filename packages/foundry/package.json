@@ -11,7 +11,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@soundsbored/contract": "*",
     "@soundsbored/core": "*",
     "livekit-client": "^2.5.0"
   },

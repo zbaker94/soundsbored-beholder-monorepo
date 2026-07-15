@@ -48,6 +48,11 @@ export function buildPanelContext(input: {
 /** Reads a module setting. */
 const get = (key: string): unknown => game.settings.get(MODULE_ID, key);
 
+/** Per-client playback prefs, read with their C6 defaults. Centralised so the
+ *  controller seed and the render context can't drift apart. */
+const readVolume = (): number => Number(get(SETTINGS.volume) ?? 1);
+const readMuted = (): boolean => Boolean(get(SETTINGS.muted) ?? false);
+
 /** Player-facing control panel: status, Join/Leave, volume, mute. Thin — all
  *  behaviour lives in the injected {@link AudioController} / core. */
 export class SoundsBoredPanel extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -76,8 +81,8 @@ export class SoundsBoredPanel extends HandlebarsApplicationMixin(ApplicationV2) 
     if (!config) return null;
     const c = createAudioController({
       config,
-      initialVolume: Number(get(SETTINGS.volume) ?? 1),
-      initialMuted: Boolean(get(SETTINGS.muted) ?? false),
+      initialVolume: readVolume(),
+      initialMuted: readMuted(),
     });
     this.#unsub = c.onState(() => void this.render(false));
     this.#controller = c;
@@ -87,14 +92,14 @@ export class SoundsBoredPanel extends HandlebarsApplicationMixin(ApplicationV2) 
   // Rendering context consumed by panel.hbs.
   async _prepareContext(options?: unknown): Promise<Record<string, unknown>> {
     const context = await super._prepareContext(options);
-    const state = (this.#controller?.getState() ?? 'disconnected') as ListenerState;
+    const state = this.#controller?.getState() ?? 'disconnected';
     return Object.assign(context, buildPanelContext({
       config: resolveConfig(get),
       state,
       joined: this.#controller?.isJoined() ?? false,
       isGM: game.user?.isGM ?? false,
-      volume: Number(get(SETTINGS.volume) ?? 1),
-      muted: Boolean(get(SETTINGS.muted) ?? false),
+      volume: readVolume(),
+      muted: readMuted(),
     }));
   }
 
@@ -119,7 +124,9 @@ export class SoundsBoredPanel extends HandlebarsApplicationMixin(ApplicationV2) 
     if (!c) return;
     try {
       await c.join();
-    } catch {
+    } catch (err) {
+      // Surface a friendly message but keep the real cause for debugging.
+      console.error('SoundsBored: join failed', err);
       ui.notifications?.error('SoundsBored: could not connect. Check the password and endpoint.');
     }
     void this.render(false);

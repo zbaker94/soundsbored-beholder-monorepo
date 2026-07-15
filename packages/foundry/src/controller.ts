@@ -4,12 +4,14 @@ import type { Listener, ListenerConfig, ListenerState } from '@soundsbored/core'
 /** Player-facing audio surface: join/leave a room and control local playback.
  *  All subscribe/reconnect/volume behaviour is delegated to `@soundsbored/core`. */
 export interface AudioController {
-  /** Connect + attach + play (must be called from a user gesture to unlock audio). */
+  /** Connect + attach + play (must be called from a user gesture to unlock audio).
+   *  @throws the underlying core connect error (e.g. token fetch or livekit
+   *  connection failure) after tearing down; state is reset to 'disconnected'. */
   join(): Promise<void>;
   /** Disconnect and tear down the audio element. */
   leave(): Promise<void>;
-  setVolume(v: number): void;
-  setMuted(m: boolean): void;
+  setVolume(volume: number): void;
+  setMuted(muted: boolean): void;
   /** Subscribe to core connection-state changes; returns an unsubscribe fn. */
   onState(cb: (s: ListenerState) => void): () => void;
   getState(): ListenerState;
@@ -37,8 +39,8 @@ export function createAudioController(deps: AudioControllerDeps): AudioControlle
   const makeListener = deps.createListenerImpl ?? createListener;
   const makeAudioEl = deps.createAudioEl ?? defaultAudioEl;
 
-  let volume = deps.initialVolume ?? 1;
-  let muted = deps.initialMuted ?? false;
+  let currentVolume = deps.initialVolume ?? 1;
+  let currentMuted = deps.initialMuted ?? false;
   let state: ListenerState = 'disconnected';
 
   let listener: Listener | null = null;
@@ -69,8 +71,8 @@ export function createAudioController(deps: AudioControllerDeps): AudioControlle
       el = audio;
       unsubListenerState = l.onState(setState);
       l.attach(audio);
-      l.setVolume(volume);
-      l.setMuted(muted);
+      l.setVolume(currentVolume);
+      l.setMuted(currentMuted);
       // Prime playback inside the caller's gesture: connect() is async and the
       // user activation that unlocks autoplay can expire before the track
       // arrives. Playing now (even before there's a source) blesses the element
@@ -91,18 +93,20 @@ export function createAudioController(deps: AudioControllerDeps): AudioControlle
     async leave(): Promise<void> {
       const l = listener;
       teardown();
-      await l?.disconnect();
+      // Guard like the join() error path: a disconnect rejection must not skip
+      // the state reset (or, upstream, the panel's controller cleanup).
+      await l?.disconnect().catch(() => undefined);
       setState('disconnected');
     },
 
-    setVolume(v: number): void {
-      volume = v;
-      listener?.setVolume(v);
+    setVolume(volume: number): void {
+      currentVolume = volume;
+      listener?.setVolume(volume);
     },
 
-    setMuted(m: boolean): void {
-      muted = m;
-      listener?.setMuted(m);
+    setMuted(muted: boolean): void {
+      currentMuted = muted;
+      listener?.setMuted(muted);
     },
 
     onState(cb: (s: ListenerState) => void): () => void {
