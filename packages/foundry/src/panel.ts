@@ -1,16 +1,49 @@
-import type { ListenerState } from '@soundsbored/core';
+import type { ListenerConfig, ListenerState } from '@soundsbored/core';
 import { createAudioController, type AudioController } from './controller.js';
 import { MODULE_ID, SETTINGS, resolveConfig } from './settings.js';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-const STATE_LABELS: Record<ListenerState, string> = {
+export const STATE_LABELS: Record<ListenerState, string> = {
   connecting: 'Connecting…',
   waiting: 'Waiting for audio…',
   live: 'Live',
   reconnecting: 'Reconnecting…',
   disconnected: 'Disconnected',
 };
+
+/** Fields the panel exposes to panel.hbs. */
+export interface PanelContext {
+  configured: boolean;
+  isGM: boolean;
+  joined: boolean;
+  state: ListenerState;
+  stateLabel: string;
+  volume: number;
+  muted: boolean;
+}
+
+/** Pure view-model for panel.hbs — derives the template context from resolved
+ *  values. Kept Foundry-free so it can be unit-tested; {@link SoundsBoredPanel}
+ *  reads the globals and delegates here. */
+export function buildPanelContext(input: {
+  config: ListenerConfig | null;
+  state: ListenerState;
+  joined: boolean;
+  isGM: boolean;
+  volume: number;
+  muted: boolean;
+}): PanelContext {
+  return {
+    configured: input.config !== null,
+    isGM: input.isGM,
+    joined: input.joined,
+    state: input.state,
+    stateLabel: STATE_LABELS[input.state],
+    volume: input.volume,
+    muted: input.muted,
+  };
+}
 
 /** Reads a module setting. */
 const get = (key: string): unknown => game.settings.get(MODULE_ID, key);
@@ -54,17 +87,15 @@ export class SoundsBoredPanel extends HandlebarsApplicationMixin(ApplicationV2) 
   // Rendering context consumed by panel.hbs.
   async _prepareContext(options?: unknown): Promise<Record<string, unknown>> {
     const context = await super._prepareContext(options);
-    const config = resolveConfig(get);
     const state = (this.#controller?.getState() ?? 'disconnected') as ListenerState;
-    return Object.assign(context, {
-      configured: config !== null,
-      isGM: game.user?.isGM ?? false,
-      joined: this.#controller?.isJoined() ?? false,
+    return Object.assign(context, buildPanelContext({
+      config: resolveConfig(get),
       state,
-      stateLabel: STATE_LABELS[state],
+      joined: this.#controller?.isJoined() ?? false,
+      isGM: game.user?.isGM ?? false,
       volume: Number(get(SETTINGS.volume) ?? 1),
       muted: Boolean(get(SETTINGS.muted) ?? false),
-    });
+    }));
   }
 
   // Wire the range + checkbox inputs after each render (buttons use data-action).
