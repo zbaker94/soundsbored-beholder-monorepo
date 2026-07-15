@@ -55,7 +55,7 @@ Body: { room: string, role: 'publisher' | 'subscriber', password: string }
 ## C7 Resilience (owned by `listener-core` + publisher)
 
 - Use LiveKit auto-reconnect: the **publisher re-publishes its track on `RoomEvent.Reconnected`**; listeners re-attach the resubscribed track. Handle `Reconnecting` / `Reconnected` / `Disconnected`.
-- Surface connection state (`connecting` / `live` / `reconnecting` / `disconnected`) in every UI.
+- Surface connection state (`connecting` / `waiting` / `live` / `reconnecting` / `disconnected`) in every UI. `connecting` = still establishing the connection; `waiting` = joined the room but the publisher's audio track hasn't arrived (or dropped); `live` = audio playing.
 - Prefer UDP where available (self-host); TCP is the always-works fallback (stutters under loss — head-of-line blocking).
 - Refresh tokens before expiry. Long-task + connection-state instrumentation on both sides.
 

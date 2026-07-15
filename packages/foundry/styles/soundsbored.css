@@ -9,6 +9,7 @@
   font-weight: bold;
 }
 .soundsbored-status[data-state='live'] { color: var(--color-level-success, #2e7d32); }
+.soundsbored-status[data-state='waiting'] { color: var(--color-level-info, #1c6fb3); }
 .soundsbored-status[data-state='reconnecting'] { color: var(--color-level-warning, #b26a00); }
 .soundsbored-status[data-state='disconnected'] { color: var(--color-level-error, #a11); }
 .soundsbored-controls {

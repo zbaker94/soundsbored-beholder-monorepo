@@ -82,14 +82,15 @@ describe('createListener', () => {
     expect(l.getState()).toBe('disconnected');
   });
 
-  it('connect() fetches a subscriber token then connects the room, state connecting', async () => {
+  it('connect() fetches a subscriber token then joins the room, state waiting', async () => {
     const fetchImpl = okTokenFetch();
     const l = createListener(config, makeDeps(fetchImpl));
     await l.connect();
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(room.connect).toHaveBeenCalledWith('ws://localhost:7880', 'jwt.header.payload');
-    expect(l.getState()).toBe('connecting');
+    // Joined the room but no audio track yet.
+    expect(l.getState()).toBe('waiting');
   });
 
   it('goes live and attaches the track to the element on TrackSubscribed (audio)', async () => {
@@ -114,7 +115,7 @@ describe('createListener', () => {
     room.emit('trackSubscribed', video, {}, {});
 
     expect(video.attach).not.toHaveBeenCalled();
-    expect(l.getState()).toBe('connecting');
+    expect(l.getState()).toBe('waiting');
   });
 
   it('attaches a late-provided element to an already-subscribed track', async () => {
@@ -191,7 +192,7 @@ describe('createListener', () => {
     expect(track.attach).toHaveBeenCalledTimes(2);
   });
 
-  it('drops to connecting (still in room) when the track is unsubscribed', async () => {
+  it('drops to waiting (still in room) when the track is unsubscribed', async () => {
     const l = createListener(config, makeDeps());
     const el = fakeElement();
     l.attach(el);
@@ -204,17 +205,17 @@ describe('createListener', () => {
     // publisher leaves -> livekit unsubscribes the track
     room.emit('trackUnsubscribed', track, {}, {});
     expect(track.detach).toHaveBeenCalledWith(el);
-    expect(l.getState()).toBe('connecting');
+    expect(l.getState()).toBe('waiting');
   });
 
-  it('Reconnected with no active track stays connecting, not a false live', async () => {
+  it('Reconnected with no active track stays waiting, not a false live', async () => {
     const l = createListener(config, makeDeps());
     l.attach(fakeElement());
     await l.connect();
     // never received a track (or lost it) before the blip
     room.emit('reconnecting');
     room.emit('reconnected');
-    expect(l.getState()).toBe('connecting');
+    expect(l.getState()).toBe('waiting');
   });
 
   it('goes live again when the publisher re-publishes after a reconnect', async () => {
@@ -228,7 +229,7 @@ describe('createListener', () => {
     room.emit('trackUnsubscribed', first, {}, {}); // publisher dropped
     room.emit('reconnecting');
     room.emit('reconnected');
-    expect(l.getState()).toBe('connecting');
+    expect(l.getState()).toBe('waiting');
 
     // publisher back -> fresh track subscribed
     const second = fakeAudioTrack();
@@ -254,7 +255,7 @@ describe('createListener', () => {
     off();
     room.emit('reconnecting');
 
-    expect(seen).toEqual(['connecting', 'live']);
+    expect(seen).toEqual(['connecting', 'waiting', 'live']);
   });
 
   it('connect() failure surfaces the error and returns to disconnected', async () => {

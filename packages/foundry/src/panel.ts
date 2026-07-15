@@ -6,6 +6,7 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 const STATE_LABELS: Record<ListenerState, string> = {
   connecting: 'Connecting…',
+  waiting: 'Waiting for audio…',
   live: 'Live',
   reconnecting: 'Reconnecting…',
   disconnected: 'Disconnected',

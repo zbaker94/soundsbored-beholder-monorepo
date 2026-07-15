@@ -7,8 +7,16 @@ import {
   type ListenerConfig,
 } from './token.js';
 
-/** Connection state surfaced to consumers (Shared Contract C7 resilience). */
-export type ListenerState = 'connecting' | 'live' | 'reconnecting' | 'disconnected';
+/** Connection state surfaced to consumers (Shared Contract C7 resilience).
+ *  `connecting` = still establishing the connection; `waiting` = joined the room
+ *  but the publisher's audio track hasn't arrived yet (or has dropped); `live` =
+ *  audio is playing. */
+export type ListenerState =
+  | 'connecting'
+  | 'waiting'
+  | 'live'
+  | 'reconnecting'
+  | 'disconnected';
 
 export interface Listener {
   /**
@@ -93,7 +101,7 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
     if (el) t.detach(el);
     track = null;
     // Still joined to the room — just waiting for the publisher to (re)appear.
-    if (room) setState('connecting');
+    if (room) setState('waiting');
   }
 
   function onReconnected(): void {
@@ -104,7 +112,7 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
       attachTrack();
       setState('live');
     } else {
-      setState('connecting');
+      setState('waiting');
     }
   }
 
@@ -232,6 +240,9 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
         setState('disconnected');
         throw err;
       }
+      // Room joined; the publisher's track arrives asynchronously via
+      // TrackSubscribed. Until then we're waiting for audio, not connecting.
+      if (!track) setState('waiting');
       scheduleRefresh(token);
     },
 

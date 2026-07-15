@@ -232,18 +232,38 @@ body {
   opacity: 0.4;
 }
 
-/* connecting: barely open, searching */
+/* connecting: squinted, straining to reach the relay */
 .niche[data-state='connecting'] .lid {
-  transform: scaleY(0.18);
+  transform: scaleY(0.62);
 }
 .niche[data-state='connecting'] .halo {
-  opacity: 0.35;
+  opacity: 0.3;
 }
 .niche[data-state='connecting'] .status {
   color: var(--torch);
 }
 .niche[data-state='connecting'] .pupil {
-  animation: search 2.4s ease-in-out infinite;
+  /* slow, narrow — concentrating rather than scanning */
+  animation: strain 4.5s ease-in-out infinite;
+}
+
+/* waiting: joined the room, eye wide and actively hunting for the audio */
+.niche[data-state='waiting'] .lid {
+  transform: scaleY(0.06);
+}
+.niche[data-state='waiting'] .halo {
+  opacity: 0.6;
+}
+.niche[data-state='waiting'] .status {
+  color: var(--torch);
+}
+.niche[data-state='waiting'] .frame {
+  stroke: var(--moss);
+  opacity: 0.7;
+}
+.niche[data-state='waiting'] .pupil {
+  /* wide, quick darting — looking around for the publisher's track */
+  animation: scan 1.7s ease-in-out infinite;
 }
 
 /* live: wide open, watching, warm */
@@ -291,10 +311,19 @@ body {
   30% { transform: translateX(6px); }
   65% { transform: translateX(-5px); }
 }
-@keyframes search {
+/* connecting: tiny, slow tremor — the squint straining to focus */
+@keyframes strain {
   0%, 100% { transform: translate(0, 0); }
-  25% { transform: translate(-9px, 3px); }
-  60% { transform: translate(8px, -2px); }
+  35% { transform: translate(-3px, 1px); }
+  70% { transform: translate(2px, -1px); }
+}
+/* waiting: wide, quick darting — actively looking around for the audio */
+@keyframes scan {
+  0%, 100% { transform: translate(0, 0); }
+  18% { transform: translate(-12px, -4px); }
+  40% { transform: translate(11px, 3px); }
+  62% { transform: translate(-7px, 6px); }
+  82% { transform: translate(9px, -5px); }
 }
 
 /* --- scroll: form fields --- */
