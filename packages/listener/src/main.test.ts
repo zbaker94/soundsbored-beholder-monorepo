@@ -30,7 +30,12 @@ vi.mock('@soundsbored/core', () => {
       this.status = status;
     }
   }
-  return { createListener: mocks.createListener, TokenFetchError: TokenFetchErrorMock };
+  const buildListenerConfig = (fields: { tokenEndpoint: string; room: string; password: string }) => {
+    const room = fields.room.trim();
+    if (!room || !fields.password) return null;
+    return { tokenEndpoint: fields.tokenEndpoint.trim(), room, password: fields.password };
+  };
+  return { createListener: mocks.createListener, TokenFetchError: TokenFetchErrorMock, buildListenerConfig };
 });
 
 const STORAGE_KEY = 'soundsbored.listener.config';

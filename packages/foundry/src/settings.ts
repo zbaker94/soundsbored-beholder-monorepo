@@ -1,4 +1,4 @@
-import type { ListenerConfig } from '@soundsbored/core';
+import { buildListenerConfig, type ListenerConfig } from '@soundsbored/core';
 
 /** Foundry module id — used as the settings namespace and module path. */
 export const MODULE_ID = 'soundsbored-beholder';
@@ -23,14 +23,13 @@ function asString(value: unknown): string {
 
 /**
  * Resolve the three C6 world settings into a {@link ListenerConfig}, or null if
- * the config is incomplete. Mirrors the listener's `buildConfig`: `room` and
- * `password` are required (non-blank); `tokenEndpoint` may be empty for a
- * same-origin relay and is otherwise trimmed.
+ * the config is incomplete. Delegates the validation rule to core's
+ * {@link buildListenerConfig} — the same rule the listener form uses.
  */
 export function resolveConfig(get: SettingsGetter): ListenerConfig | null {
-  const tokenEndpoint = asString(get(SETTINGS.tokenEndpoint)).trim();
-  const room = asString(get(SETTINGS.room)).trim();
-  const password = asString(get(SETTINGS.password));
-  if (!room || !password) return null;
-  return { tokenEndpoint, room, password };
+  return buildListenerConfig({
+    tokenEndpoint: asString(get(SETTINGS.tokenEndpoint)),
+    room: asString(get(SETTINGS.room)),
+    password: asString(get(SETTINGS.password)),
+  });
 }

@@ -7,6 +7,23 @@ export interface ListenerConfig {
   password: string;
 }
 
+/**
+ * Validate raw config fields into a {@link ListenerConfig}, or null if incomplete.
+ * The single source of truth for the C6 rule shared by every consumer shell
+ * (listener form, Foundry settings): `room` and `password` are required
+ * (non-blank); `room` and `tokenEndpoint` are trimmed; `tokenEndpoint` may be
+ * empty for a same-origin relay; `password` is kept verbatim.
+ */
+export function buildListenerConfig(fields: {
+  tokenEndpoint: string;
+  room: string;
+  password: string;
+}): ListenerConfig | null {
+  const room = fields.room.trim();
+  if (!room || !fields.password) return null;
+  return { tokenEndpoint: fields.tokenEndpoint.trim(), room, password: fields.password };
+}
+
 export type FetchLike = typeof fetch;
 
 /** Error thrown when the token endpoint rejects or is unreachable. */

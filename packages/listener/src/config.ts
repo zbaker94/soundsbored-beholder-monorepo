@@ -1,4 +1,4 @@
-import type { ListenerConfig } from '@soundsbored/core';
+import { buildListenerConfig, type ListenerConfig } from '@soundsbored/core';
 
 // Pure config resolution for the listener shell — no DOM, so it's unit-testable
 // independently of main.ts's wiring.
@@ -35,15 +35,14 @@ export function resolveField(
 }
 
 /** Validate raw form inputs into a ListenerConfig, or null if incomplete.
- *  tokenEndpoint may be empty for a same-origin deploy (relative /token). */
+ *  tokenEndpoint may be empty for a same-origin deploy (relative /token).
+ *  Delegates the shared C6 rule to core's {@link buildListenerConfig}. */
 export function buildConfig(
   tokenEndpoint: string,
   room: string,
   password: string,
 ): ListenerConfig | null {
-  const trimmedRoom = room.trim();
-  if (!trimmedRoom || !password) return null;
-  return { tokenEndpoint: tokenEndpoint.trim(), room: trimmedRoom, password };
+  return buildListenerConfig({ tokenEndpoint, room, password });
 }
 
 /** Per-listener playback preferences, persisted separately from the connection

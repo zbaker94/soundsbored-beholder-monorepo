@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fetchSubscriberToken, parseJwtExp, TokenFetchError, type ListenerConfig } from './token.js';
+import { buildListenerConfig, fetchSubscriberToken, parseJwtExp, TokenFetchError, type ListenerConfig } from './token.js';
 
 const config: ListenerConfig = {
   tokenEndpoint: 'http://localhost:8080',
@@ -14,6 +14,32 @@ function jsonResponse(status: number, body: unknown): Response {
     json: async () => body,
   } as unknown as Response;
 }
+
+describe('buildListenerConfig', () => {
+  it('trims tokenEndpoint and room but keeps password verbatim', () => {
+    expect(buildListenerConfig({ tokenEndpoint: '  http://r  ', room: '  spike  ', password: '  pw ' })).toEqual({
+      tokenEndpoint: 'http://r',
+      room: 'spike',
+      password: '  pw ',
+    });
+  });
+
+  it('allows an empty tokenEndpoint (same-origin relay)', () => {
+    expect(buildListenerConfig({ tokenEndpoint: '', room: 'spike', password: 'pw' })).toEqual({
+      tokenEndpoint: '',
+      room: 'spike',
+      password: 'pw',
+    });
+  });
+
+  it('returns null when room is blank or whitespace', () => {
+    expect(buildListenerConfig({ tokenEndpoint: 'http://r', room: '   ', password: 'pw' })).toBeNull();
+  });
+
+  it('returns null when password is empty', () => {
+    expect(buildListenerConfig({ tokenEndpoint: 'http://r', room: 'spike', password: '' })).toBeNull();
+  });
+});
 
 describe('fetchSubscriberToken', () => {
   it('POSTs /token with subscriber role and returns token + url on 200', async () => {
