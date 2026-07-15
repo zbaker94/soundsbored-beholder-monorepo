@@ -91,9 +91,37 @@ function readConfig(): ListenerConfig | null {
 
 // --- ui ---------------------------------------------------------------------
 
+// --- the eye follows the mouse while live -----------------------------------
+
+const pupil = document.querySelector<SVGElement>('.pupil');
+const sclera = document.querySelector<SVGGraphicsElement>('.sclera');
+// matchMedia is absent in some test envs — optional so module load never throws.
+const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+
+/** Move the pupil toward the cursor, clamped inside the iris (SVG user units). */
+function followMouse(e: MouseEvent): void {
+  if (!pupil || !sclera) return;
+  const r = sclera.getBoundingClientRect();
+  if (!r.width) return;
+  const scale = 140 / r.width; // the sclera spans ~140 SVG units
+  const dx = (e.clientX - (r.left + r.width / 2)) * scale;
+  const dy = (e.clientY - (r.top + r.height / 2)) * scale;
+  const cx = Math.max(-18, Math.min(18, dx));
+  const cy = Math.max(-12, Math.min(12, dy));
+  pupil.style.transform = `translate(${cx}px, ${cy}px)`;
+}
+
 function showState(state: ListenerState): void {
   els.niche.dataset.state = state;
   els.status.textContent = state;
+  // Live: the pupil tracks the cursor. Any other state hands the pupil back to
+  // its CSS animation (clear the inline transform so keyframes apply).
+  if (state === 'live' && !reduceMotion?.matches) {
+    window.addEventListener('mousemove', followMouse);
+  } else {
+    window.removeEventListener('mousemove', followMouse);
+    if (pupil) pupil.style.transform = '';
+  }
 }
 
 function showError(message: string | null): void {

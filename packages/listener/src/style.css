@@ -247,23 +247,19 @@ body {
   animation: strain 4.5s ease-in-out infinite;
 }
 
-/* waiting: joined the room, eye wide and actively hunting for the audio */
+/* waiting: joined the room, still squinting but wandering slowly, hunting audio */
 .niche[data-state='waiting'] .lid {
-  transform: scaleY(0.06);
+  transform: scaleY(0.62);
 }
 .niche[data-state='waiting'] .halo {
-  opacity: 0.6;
+  opacity: 0.55;
 }
 .niche[data-state='waiting'] .status {
   color: var(--torch);
 }
-.niche[data-state='waiting'] .frame {
-  stroke: var(--moss);
-  opacity: 0.7;
-}
 .niche[data-state='waiting'] .pupil {
-  /* wide, quick darting — looking around for the publisher's track */
-  animation: scan 1.7s ease-in-out infinite;
+  /* slow, wide wander through the squint — searching without urgency */
+  animation: drift 6s ease-in-out infinite;
 }
 
 /* live: wide open, watching, warm */
@@ -281,9 +277,7 @@ body {
   stroke: var(--moss);
   opacity: 1;
 }
-.niche[data-state='live'] .pupil {
-  animation: drift 6s ease-in-out infinite;
-}
+/* live: the pupil tracks the mouse (driven by main.ts) — no auto-animation. */
 
 /* reconnecting: half-lidded, pulsing */
 .niche[data-state='reconnecting'] .lid {
@@ -316,14 +310,6 @@ body {
   0%, 100% { transform: translate(0, 0); }
   35% { transform: translate(-3px, 1px); }
   70% { transform: translate(2px, -1px); }
-}
-/* waiting: wide, quick darting — actively looking around for the audio */
-@keyframes scan {
-  0%, 100% { transform: translate(0, 0); }
-  18% { transform: translate(-12px, -4px); }
-  40% { transform: translate(11px, 3px); }
-  62% { transform: translate(-7px, 6px); }
-  82% { transform: translate(9px, -5px); }
 }
 
 /* --- scroll: form fields --- */
