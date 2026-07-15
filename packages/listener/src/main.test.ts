@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   setMuted: vi.fn(),
   onState: vi.fn(),
   getState: vi.fn(() => 'disconnected'),
+  onPresence: vi.fn(),
+  getPresence: vi.fn(() => ({ broadcaster: false, listeners: 0 })),
   createListener: vi.fn(),
 }));
 
@@ -37,6 +39,7 @@ function renderDom(): void {
   document.body.innerHTML = `
     <main id="niche" data-state="disconnected"></main>
     <p id="status"></p>
+    <p id="presence"></p>
     <label><span>Token endpoint</span><input id="tokenEndpoint" type="url" /></label>
     <label><span>Room</span><input id="room" type="text" /></label>
     <label><span>Password</span><input id="password" type="password" /></label>
@@ -75,18 +78,25 @@ beforeEach(() => {
     setMuted: mocks.setMuted,
     onState: mocks.onState,
     getState: mocks.getState,
+    onPresence: mocks.onPresence,
+    getPresence: mocks.getPresence,
   });
 });
 
 describe('listener DOM wiring', () => {
-  it('locks and hides a field the operator set in the server config', async () => {
+  it('shows an operator-set field read-only + marked, not hidden', async () => {
     (window as unknown as { __SOUNDSBORED__?: unknown }).__SOUNDSBORED__ = { room: 'locked-room' };
     await loadMain();
 
-    expect($<HTMLInputElement>('room').value).toBe('locked-room');
-    expect($('room').closest('label')?.hasAttribute('hidden')).toBe(true);
+    const room = $<HTMLInputElement>('room');
+    expect(room.value).toBe('locked-room');
+    expect(room.readOnly).toBe(true);
+    expect(room.closest('label')?.hasAttribute('data-locked')).toBe(true);
+    expect(room.closest('label')?.hasAttribute('hidden')).toBe(false);
     // A field with no server default stays editable.
-    expect($('tokenEndpoint').closest('label')?.hasAttribute('hidden')).toBe(false);
+    const te = $<HTMLInputElement>('tokenEndpoint');
+    expect(te.readOnly).toBe(false);
+    expect(te.closest('label')?.hasAttribute('data-locked')).toBe(false);
   });
 
   it('prefills saved user config when no server default locks the field', async () => {

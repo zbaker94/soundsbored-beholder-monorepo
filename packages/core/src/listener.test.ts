@@ -10,6 +10,10 @@ vi.mock('livekit-client', () => ({
     Reconnecting: 'reconnecting',
     Reconnected: 'reconnected',
     Disconnected: 'disconnected',
+    ParticipantConnected: 'participantConnected',
+    ParticipantDisconnected: 'participantDisconnected',
+    TrackPublished: 'trackPublished',
+    TrackUnpublished: 'trackUnpublished',
   },
   Track: {
     Kind: { Audio: 'audio', Video: 'video' },
@@ -18,6 +22,7 @@ vi.mock('livekit-client', () => ({
 }));
 
 import { createListener } from './listener.js';
+import type { Presence } from './listener.js';
 import type { ListenerConfig } from './token.js';
 
 const config: ListenerConfig = {
@@ -32,6 +37,14 @@ class FakeRoom {
   handlers = new Map<string, Handler[]>();
   connect = vi.fn(async (_url: string, _token: string) => {});
   disconnect = vi.fn(async () => {});
+  remoteParticipants = new Map<string, { audioTrackPublications: Map<string, unknown> }>();
+
+  /** Add/replace a participant; `hasAudio` marks it as the broadcaster. */
+  addParticipant(id: string, hasAudio: boolean): void {
+    this.remoteParticipants.set(id, {
+      audioTrackPublications: hasAudio ? new Map([['a', {}]]) : new Map(),
+    });
+  }
 
   on(event: string, cb: Handler): this {
     const list = this.handlers.get(event) ?? [];
@@ -243,6 +256,35 @@ describe('createListener', () => {
     await l.connect();
     room.emit('disconnected');
     expect(l.getState()).toBe('disconnected');
+  });
+
+  it('tracks room presence: broadcaster + fellow listeners', async () => {
+    const l = createListener(config, makeDeps());
+    const seen: Presence[] = [];
+    l.onPresence((p) => seen.push(p));
+    await l.connect();
+    expect(l.getPresence()).toEqual({ broadcaster: false, listeners: 0 });
+
+    // a fellow listener joins (subscribe-only, no audio publication)
+    room.addParticipant('l1', false);
+    room.emit('participantConnected', {});
+    expect(l.getPresence()).toEqual({ broadcaster: false, listeners: 1 });
+
+    // the broadcaster joins (publishes audio)
+    room.addParticipant('gm', true);
+    room.emit('participantConnected', {});
+    expect(l.getPresence()).toEqual({ broadcaster: true, listeners: 1 });
+
+    // broadcaster leaves
+    room.remoteParticipants.delete('gm');
+    room.emit('participantDisconnected', {});
+    expect(l.getPresence()).toEqual({ broadcaster: false, listeners: 1 });
+
+    // disconnect resets presence
+    await l.disconnect();
+    expect(l.getPresence()).toEqual({ broadcaster: false, listeners: 0 });
+
+    expect(seen).toContainEqual({ broadcaster: true, listeners: 1 });
   });
 
   it('onState notifies subscribers and unsubscribes cleanly', async () => {

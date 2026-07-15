@@ -198,8 +198,16 @@ body {
 }
 .stalks circle {
   fill: var(--torch);
-  opacity: 0.7;
-  transition: fill 0.4s ease, opacity 0.4s ease;
+  opacity: 0.28; /* asleep by default — one wakes per participant (see .awake) */
+  transition: fill 0.4s ease, opacity 0.4s ease, r 0.4s ease;
+}
+/* presence: an eyestalk wakes for each participant in the room */
+.stalk.awake circle {
+  opacity: 1;
+}
+/* the broadcaster's stalk (top-centre) burns hotter */
+.niche[data-broadcaster='true'] .stalks .stalk:nth-child(2) circle {
+  fill: var(--torch-hot);
 }
 
 .status {
@@ -210,6 +218,15 @@ body {
   text-transform: uppercase;
   color: var(--muted);
   transition: color 0.3s ease;
+}
+
+.presence {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--torch);
+  min-height: 0.9rem;
 }
 
 /* --- STATE MACHINE --- */
@@ -356,6 +373,23 @@ input:focus-visible {
 
 input:disabled {
   opacity: 0.5;
+}
+
+/* operator-set fields (baked into the server at runtime): shown read-only,
+   tagged "set by host", not editable. */
+label[data-locked] > span::after {
+  content: ' · set by host';
+  color: var(--torch);
+  letter-spacing: 0.06em;
+}
+label[data-locked] input[readonly] {
+  opacity: 0.75;
+  cursor: default;
+  border-style: dashed;
+}
+label[data-locked] input[readonly]:focus-visible {
+  outline: none;
+  border-color: var(--border);
 }
 
 /* --- buttons --- */

@@ -1,6 +1,6 @@
 import '@fontsource-variable/figtree';
 import { createListener, TokenFetchError } from '@soundsbored/core';
-import type { Listener, ListenerConfig, ListenerState } from '@soundsbored/core';
+import type { Listener, ListenerConfig, ListenerState, Presence } from '@soundsbored/core';
 import { buildConfig, parseSavedConfig, parseSavedPrefs, resolveField } from './config.js';
 import './style.css';
 
@@ -29,9 +29,13 @@ const els = {
   volume: $<HTMLInputElement>('volume'),
   muteBtn: $<HTMLButtonElement>('muteBtn'),
   status: $<HTMLParagraphElement>('status'),
+  presence: $<HTMLParagraphElement>('presence'),
   error: $<HTMLParagraphElement>('error'),
   audio: $<HTMLAudioElement>('audio'),
 };
+
+// The beholder's eyestalks wake to show who else is in the room.
+const stalks = [...document.querySelectorAll<SVGGElement>('.stalks .stalk')];
 
 // --- config: server-injected defaults < saved user input --------------------
 
@@ -74,11 +78,15 @@ const defaults = window.__SOUNDSBORED__ ?? {};
 const saved = readSaved();
 const savedPrefs = readPrefs();
 
-// Operator-locked fields are filled and their label hidden; the rest stay editable.
+// Operator-set fields (baked into the server at runtime) are shown read-only and
+// marked "set by host" — informational, not editable. The rest stay editable.
 function applyField(input: HTMLInputElement, key: 'tokenEndpoint' | 'room'): void {
   const { value, locked } = resolveField(key, defaults, saved);
   input.value = value;
-  if (locked) input.closest('label')?.setAttribute('hidden', '');
+  if (locked) {
+    input.readOnly = true;
+    input.closest('label')?.setAttribute('data-locked', '');
+  }
 }
 
 applyField(els.tokenEndpoint, 'tokenEndpoint');
@@ -109,6 +117,17 @@ function followMouse(e: MouseEvent): void {
   const cx = Math.max(-18, Math.min(18, dx));
   const cy = Math.max(-12, Math.min(12, dy));
   pupil.style.transform = `translate(${cx}px, ${cy}px)`;
+}
+
+/** Wake one eyestalk per participant; the broadcaster's stalk burns hotter. */
+function showPresence(p: Presence): void {
+  const awake = (p.broadcaster ? 1 : 0) + p.listeners;
+  stalks.forEach((s, i) => s.classList.toggle('awake', i < awake));
+  els.niche.dataset.broadcaster = String(p.broadcaster);
+  const parts: string[] = [];
+  if (p.broadcaster) parts.push('broadcaster');
+  if (p.listeners) parts.push(`${p.listeners} listening`);
+  els.presence.textContent = parts.join(' · ');
 }
 
 function showState(state: ListenerState): void {
@@ -170,6 +189,7 @@ async function start(): Promise<void> {
   listener.setVolume(Number(els.volume.value));
   listener.setMuted(muted);
   listener.onState(showState);
+  listener.onPresence(showPresence);
 
   setConnected(true);
   // Prime playback inside the click gesture: connect() is async, and the user

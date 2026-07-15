@@ -18,6 +18,14 @@ export type ListenerState =
   | 'reconnecting'
   | 'disconnected';
 
+/** Who else is in the room (C5: one broadcaster publishing audio, N listeners). */
+export interface Presence {
+  /** A remote participant is publishing audio — the SoundsBored broadcaster. */
+  broadcaster: boolean;
+  /** Other subscribe-only participants sharing the room. */
+  listeners: number;
+}
+
 export interface Listener {
   /**
    * Fetch a subscriber token (Shared Contract C4) and connect to the room (C5/C7).
@@ -36,6 +44,9 @@ export interface Listener {
   /** Subscribe to state changes; returns an unsubscribe fn. */
   onState(cb: (s: ListenerState) => void): () => void;
   getState(): ListenerState;
+  /** Subscribe to room presence (broadcaster + other listeners); returns unsub. */
+  onPresence(cb: (p: Presence) => void): () => void;
+  getPresence(): Presence;
 }
 
 export interface ListenerDeps {
@@ -68,8 +79,32 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
   let refreshTimer: ReturnType<typeof setTimeout> | null = null;
   /** The token currently in use — bounds how long refresh retries keep trying. */
   let currentToken: string | null = null;
+  let presence: Presence = { broadcaster: false, listeners: 0 };
 
   const stateListeners = new Set<(s: ListenerState) => void>();
+  const presenceListeners = new Set<(p: Presence) => void>();
+
+  function setPresence(next: Presence): void {
+    if (next.broadcaster === presence.broadcaster && next.listeners === presence.listeners) return;
+    presence = next;
+    for (const cb of presenceListeners) cb(next);
+  }
+
+  /** Classify the room's remote participants: the one publishing audio is the
+   *  broadcaster, everyone else is a fellow listener. */
+  function recomputePresence(): void {
+    if (!room) {
+      setPresence({ broadcaster: false, listeners: 0 });
+      return;
+    }
+    let broadcaster = false;
+    let listeners = 0;
+    for (const p of room.remoteParticipants.values()) {
+      if (p.audioTrackPublications.size > 0) broadcaster = true;
+      else listeners += 1;
+    }
+    setPresence({ broadcaster, listeners });
+  }
 
   function setState(next: ListenerState): void {
     if (next === state) return;
@@ -114,6 +149,7 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
     } else {
       setState('waiting');
     }
+    recomputePresence();
   }
 
   function onReconnecting(): void {
@@ -130,6 +166,12 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
     r.on(RoomEvent.Reconnecting, onReconnecting);
     r.on(RoomEvent.Reconnected, onReconnected);
     r.on(RoomEvent.Disconnected, onDisconnected);
+    // Presence: recompute whenever the room's participant set or their
+    // publications change.
+    r.on(RoomEvent.ParticipantConnected, recomputePresence);
+    r.on(RoomEvent.ParticipantDisconnected, recomputePresence);
+    r.on(RoomEvent.TrackPublished, recomputePresence);
+    r.on(RoomEvent.TrackUnpublished, recomputePresence);
   }
 
   /** Detach every handler wireRoom added, so a discarded Room's teardown can't
@@ -140,6 +182,10 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
     r.off(RoomEvent.Reconnecting, onReconnecting);
     r.off(RoomEvent.Reconnected, onReconnected);
     r.off(RoomEvent.Disconnected, onDisconnected);
+    r.off(RoomEvent.ParticipantConnected, recomputePresence);
+    r.off(RoomEvent.ParticipantDisconnected, recomputePresence);
+    r.off(RoomEvent.TrackPublished, recomputePresence);
+    r.off(RoomEvent.TrackUnpublished, recomputePresence);
   }
 
   /** Create, wire, and connect a fresh Room. Shared by connect() and refresh().
@@ -225,6 +271,7 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
     // fire 'disconnected' into the now-live listener.
     unwireRoom(previous);
     void previous.disconnect();
+    recomputePresence();
     scheduleRefresh(token);
   }
 
@@ -243,6 +290,7 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
       // Room joined; the publisher's track arrives asynchronously via
       // TrackSubscribed. Until then we're waiting for audio, not connecting.
       if (!track) setState('waiting');
+      recomputePresence();
       scheduleRefresh(token);
     },
 
@@ -255,6 +303,7 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
       room = null;
       await r?.disconnect();
       setState('disconnected');
+      setPresence({ broadcaster: false, listeners: 0 });
     },
 
     attach(element: HTMLAudioElement): void {
@@ -281,6 +330,17 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
 
     getState(): ListenerState {
       return state;
+    },
+
+    onPresence(cb: (p: Presence) => void): () => void {
+      presenceListeners.add(cb);
+      return () => {
+        presenceListeners.delete(cb);
+      };
+    },
+
+    getPresence(): Presence {
+      return presence;
     },
   };
 }
