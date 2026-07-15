@@ -22,7 +22,7 @@ the operational how-to.
 publisher and every consumer — configures the same three values (Contract C6):
 
 ```
-tokenEndpoint   the relay's public URL   e.g. https://audio.example.com
+tokenEndpoint   the relay's public URL   e.g. https://relay.example.com
 room            an agreed string         e.g. world1   (MUST match on all sides)
 password        the shared room password (relay ROOM_PASSWORD)
 ```
@@ -71,7 +71,7 @@ room + password**.
 
 ### A2. Configure + launch
 ```bash
-git clone <this repo> && cd soundsbored-remote-audio/deploy/udp
+git clone <this repo> && cd soundsbored-beholder-monorepo/deploy/udp
 cp .env.example .env
 # edit .env:
 #   BEHOLDER_HOST=beholder.example.com
@@ -171,7 +171,7 @@ stack TCP-only (tokenEndpoint `http://localhost:8080`, Beholder `:8081`).
 ### 6a. Install — from the manifest URL (needs a published release, §7)
 Foundry → **Add-on Modules → Install Module → Manifest URL**:
 ```
-https://github.com/zbaker94/soundsbored-remote-audio/releases/latest/download/module.json
+https://github.com/zbaker94/soundsbored-beholder-monorepo/releases/latest/download/module.json
 ```
 
 ### 6b. Install — manual (no release needed, good for the first gate)
@@ -185,7 +185,7 @@ Restart Foundry.
 ### 6c. Configure (GM)
 1. Enable the module (Foundry v13+).
 2. **Game Settings → Configure Settings → SoundsBored: Beholder** → set
-   `tokenEndpoint` (e.g. `https://audio.example.com`), `room` (`world1`),
+   `tokenEndpoint` (e.g. `https://relay.example.com`), `room` (`world1`),
    `password`. World settings are GM-only to edit, readable by all players (so
    their browsers fetch a subscriber token).
 

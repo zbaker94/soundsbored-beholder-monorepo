@@ -5,9 +5,9 @@ Monorepo (npm workspaces). SoundsBored (Tauri app, separate repo) publishes its 
 ## Packages
 - `contract` — shared token-endpoint types + room/role constants. **DONE**
 - `relay` — LiveKit config + Fastify token endpoint + Docker. **DONE** (12 tests)
-- `core` — listener-core (subscribe/play/volume/reconnect). **TODO (M2)**
-- `listener` — standalone self-host web app. **TODO (M2)**
-- `foundry` — thin Foundry VTT module. **TODO (M4)**
+- `core` — listener-core (subscribe/play/volume/reconnect). **DONE (M2)**
+- `listener` — standalone self-host web app ("Beholder"). **DONE (M2)**
+- `foundry` — thin Foundry VTT module ("SoundsBored: Beholder", id `soundsbored-beholder`). **DONE (M4)**
 
 ## Contract (authoritative: `CONTRACT.md`)
 - SFU `ws(s)://host:7880` signaling; media 7881/TCP or 7882/UDP; clients auto-select ICE.
@@ -15,7 +15,7 @@ Monorepo (npm workspaces). SoundsBored (Tauri app, separate repo) publishes its 
 - Token endpoint `POST /token {room,role,password}` → `{token,url}`; 401 bad pw; 400 bad body. Use `@soundsbored/contract` types.
 - One publisher, one audio track. Listeners subscribe to ANY remote audio track (`RoomEvent.TrackSubscribed`, kind audio).
 - Listener config = `{tokenEndpoint, room, password}` → POST /token role `subscriber` → connect.
-- **Resilience (required in `core`):** livekit-client auto-reconnect; re-attach track on `Reconnected`; expose state `connecting|live|reconnecting|disconnected`; refresh token before expiry. UDP preferred, TCP fallback (stutters under loss).
+- **Resilience (required in `core`):** livekit-client auto-reconnect; re-attach track on `Reconnected`; expose state `connecting|waiting|live|reconnecting|disconnected` (`waiting` = room joined, no audio track yet); refresh token before expiry. UDP preferred, TCP fallback (stutters under loss).
 
 ## Conventions
 - TS strict, ESM, single quotes, Zod for external input, Node ≥20.

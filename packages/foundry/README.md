@@ -9,7 +9,7 @@ per-player volume and automatic reconnect. A thin shell over
 In Foundry: **Add-on Modules → Install Module → Manifest URL**:
 
 ```
-https://github.com/zbaker94/soundsbored-remote-audio/releases/latest/download/module.json
+https://github.com/zbaker94/soundsbored-beholder-monorepo/releases/latest/download/module.json
 ```
 
 ## Configure (GM)
@@ -17,8 +17,8 @@ https://github.com/zbaker94/soundsbored-remote-audio/releases/latest/download/mo
 Enable the module, then in **Game Settings → Configure Settings → SoundsBored:
 Beholder** set:
 
-- **Token endpoint** — your relay URL (e.g. the Railway relay), or blank for a
-  same-origin relay.
+- **Token endpoint** — your relay's public URL (e.g. `https://relay.example.com`
+  from a self-hosted `deploy/udp` stack).
 - **Room** — must match the room the SoundsBored app publishes to.
 - **Room password** — the shared listen-only password set on the relay.
 

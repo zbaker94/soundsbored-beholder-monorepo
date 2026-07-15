@@ -7,7 +7,8 @@ A Tauri soundboard app publishes a live WebRTC audio track to the LiveKit SFU. R
 - **`@soundsbored/contract`** — shared TypeScript types for the token API
 - **`@soundsbored/relay`** — Fastify HTTP service that mints LiveKit JWT tokens + LiveKit server configs
 - **`@soundsbored/core`** — framework-agnostic listener: subscribe, play, per-listener volume, reconnect
-- **`@soundsbored/listener`** — standalone self-host web listener (Vite) built on `core`
+- **`@soundsbored/listener`** — standalone self-host web listener (Vite) built on `core` ("Beholder")
+- **`@soundsbored/foundry`** — Foundry VTT module ("SoundsBored: Beholder"), a thin shell over `core`
 
 ## Packages
 
