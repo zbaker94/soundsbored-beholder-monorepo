@@ -48,10 +48,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Live grain tiled behind the panel — an overlay over the torch gradient, never
+   over the panel itself (.niche paints after this, and owns its own .grain). */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url('./assets/background.webp');
+  background-repeat: repeat;
+  background-size: 16rem 16rem; /* the tile's own 256px, pinned against root font-size */
+  opacity: 1;
+  mix-blend-mode: soft-light;
+}
+
+/* The animation is a looping grain field with no pause control, so drop the
+   whole layer rather than leave it flickering. */
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    display: none;
+  }
+}
+
 /* --- the arched niche --- */
 
 .niche {
   position: relative;
+  z-index: 1; /* above the grain tiled across the body */
   width: 100%;
   max-width: 27rem;
   padding: 1.75rem 1.75rem 2rem;
@@ -122,12 +146,116 @@ body {
   display: grid;
   justify-items: center;
   gap: 0.5rem;
+  /* The party crowds up into this section — the status text stays legible on top. */
+  position: relative;
+  z-index: 1;
 }
 
 .arch {
   width: 12.5rem;
   height: auto;
   overflow: visible;
+}
+
+/* --- the party: one adventurer per client, standing in the shadow below --- */
+
+.party {
+  position: relative;
+  /* fanLayout() works in % of this height to place the shadow line across the
+     whole party (see SHADOW_START in cast.ts). */
+  height: 7rem;
+  /* Pulled up over the grid's gap so the tallest heads crowd the status line. */
+  margin: -1.8rem 0 -0.4rem;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.adventurer {
+  position: absolute;
+  /* --x/--y come from fanLayout(), in % of this band; each figure hangs from
+     its feet, which fall past the band's foot into the gradient. */
+  left: calc(50% + var(--x) * 1%);
+  top: calc(var(--y) * 1%);
+  width: 6.4rem;
+  /* Taller than the band on purpose — see FIGURE_HEIGHT in cast.ts, which must
+     be kept in step with this ratio (8rem figure / 7rem band). */
+  height: 8rem;
+  /* --flip turns the left wing back in toward the centre. */
+  transform: translate(-50%, -100%) scaleX(var(--flip));
+  /* Contain the tint blend: it must wash over the sprite, not the panel. */
+  isolation: isolate;
+  color: var(--torch);
+  animation: rise 0.45s ease-out backwards;
+  /* The shadow the figures sink into, masking the sprite and its tint together.
+     --fade-start/--fade-end come from fanLayout() in this figure's own
+     coordinates, so a staggered party dissolves along one level horizon. */
+  mask-image: linear-gradient(
+    180deg,
+    #000 calc(var(--fade-start) * 1%),
+    transparent calc(var(--fade-end) * 1%)
+  );
+}
+
+.adventurer::before,
+.adventurer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+/* the figure itself, moshed pixels and all */
+.adventurer::before {
+  background-image: url('./assets/adventurers.png');
+  background-size: 3000% 100%; /* 30 cells wide */
+  background-position: calc(var(--sprite) * 100% / 29) 0;
+  background-repeat: no-repeat;
+  filter: var(--shadow-hard);
+}
+
+/* the tint, washed over the top: takes the sprite's shape and shading, but the
+   palette's hue — which is what kills the source art's purple and pink. */
+.adventurer::after {
+  background-color: currentColor;
+  mask-image: url('./assets/adventurers.png');
+  mask-size: 3000% 100%;
+  mask-position: calc(var(--sprite) * 100% / 29) 0;
+  mask-repeat: no-repeat;
+  mix-blend-mode: color;
+}
+
+/* you: gilt instead of swamp green. Stacking is by position in the fan, not by
+   who you are, so your figure is picked out by colour alone. */
+.adventurer.self {
+  color: var(--keyline);
+}
+.adventurer.self::before {
+  filter: drop-shadow(0 0 6px rgba(var(--keyline-rgb), 0.5)) var(--shadow-hard);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    /* keeps scaleX, or a left-wing figure would swing round as it arrives */
+    transform: translate(-50%, -92%) scaleX(var(--flip));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adventurer {
+    animation: none;
+  }
+}
+
+/* the gilt masonry around the keyline: thick, mitred, and always gold — it does
+   not follow the eye's state the way .frame does */
+.frame-outer {
+  fill: none;
+  stroke: var(--keyline);
+  stroke-width: 8;
+  stroke-linejoin: miter;
+  stroke-linecap: square;
+  filter: drop-shadow(0 5px 0 rgba(0, 0, 0, 0.75));
 }
 
 .frame {
@@ -190,27 +318,6 @@ body {
   transform-origin: bottom;
 }
 
-.stalks path {
-  fill: none;
-  stroke: var(--keyline);
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  opacity: 0.6;
-}
-.stalks circle {
-  fill: var(--torch);
-  opacity: 0.28; /* asleep by default — one wakes per participant (see .awake) */
-  transition: fill 0.4s ease, opacity 0.4s ease, r 0.4s ease;
-}
-/* presence: an eyestalk wakes for each participant in the room */
-.stalk.awake circle {
-  opacity: 1;
-}
-/* the broadcaster's stalk (top-centre) burns hotter */
-.niche[data-broadcaster='true'] .stalks .stalk:nth-child(2) circle {
-  fill: var(--torch-hot);
-}
-
 .status {
   margin: 0;
   font-family: var(--font-display);
@@ -244,10 +351,6 @@ body {
 }
 .niche[data-state='disconnected'] .iris-mid {
   stop-color: #4b463c;
-}
-.niche[data-state='disconnected'] .stalks circle {
-  fill: #5a5346;
-  opacity: 0.4;
 }
 
 /* connecting: squinted, straining to reach the relay */
@@ -289,7 +392,7 @@ body {
   animation: flicker 3.6s ease-in-out infinite;
 }
 .niche[data-state='live'] .status {
-  color: var(--torch-hot);
+  color: var(--keyline);
 }
 .niche[data-state='live'] .frame {
   stroke: var(--torch-hot);

@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   onState: vi.fn(),
   getState: vi.fn(() => 'disconnected'),
   onPresence: vi.fn(),
-  getPresence: vi.fn(() => ({ broadcaster: false, listeners: 0 })),
+  getPresence: vi.fn(() => ({ broadcaster: false, listeners: 0, self: null, listenerIds: [] })),
   createListener: vi.fn(),
 }));
 
@@ -45,6 +45,7 @@ function renderDom(): void {
     <main id="niche" data-state="disconnected"></main>
     <p id="status"></p>
     <p id="presence"></p>
+    <ul id="party"></ul>
     <label><span>Token endpoint</span><input id="tokenEndpoint" type="url" /></label>
     <label><span>Room</span><input id="room" type="text" /></label>
     <label><span>Password</span><input id="password" type="password" /></label>
@@ -85,6 +86,49 @@ beforeEach(() => {
     getState: mocks.getState,
     onPresence: mocks.onPresence,
     getPresence: mocks.getPresence,
+  });
+});
+
+describe('presence', () => {
+  /** Drive the onPresence callback main.ts registered, then let the DOM settle. */
+  async function emitPresence(p: unknown): Promise<void> {
+    await loadMain();
+    $<HTMLInputElement>('room').value = 'the-session';
+    $<HTMLInputElement>('password').value = 'pw';
+    $<HTMLButtonElement>('enable').click();
+    await tick();
+    const cb = mocks.onPresence.mock.calls.at(-1)?.[0] as (p: unknown) => void;
+    cb(p);
+  }
+
+  it('counts the party the same way it draws it — you included', async () => {
+    // p.listeners counts everyone BUT you, while the party draws you too. The
+    // tally must match the figures, or the UI contradicts itself.
+    await emitPresence({
+      broadcaster: true,
+      listeners: 3,
+      self: 'subscriber-me',
+      listenerIds: ['a', 'b', 'c'],
+    });
+
+    expect($('party').children).toHaveLength(4);
+    expect($('presence').textContent).toBe('broadcaster · 4 listening');
+  });
+
+  it('says nothing about an empty room', async () => {
+    await emitPresence({ broadcaster: false, listeners: 0, self: null, listenerIds: [] });
+    expect($('party').children).toHaveLength(0);
+    expect($('presence').textContent).toBe('');
+  });
+
+  it('marks exactly one figure as you', async () => {
+    await emitPresence({
+      broadcaster: false,
+      listeners: 2,
+      self: 'subscriber-me',
+      listenerIds: ['a', 'b'],
+    });
+    expect($('party').querySelectorAll('.adventurer.self')).toHaveLength(1);
   });
 });
 

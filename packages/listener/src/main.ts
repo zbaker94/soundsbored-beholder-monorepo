@@ -2,6 +2,7 @@ import '@fontsource-variable/figtree';
 import { createListener, TokenFetchError } from '@soundsbored/core';
 import type { Listener, ListenerConfig, ListenerState, Presence } from '@soundsbored/core';
 import { buildConfig, parseSavedConfig, parseSavedPrefs, resolveField } from './config.js';
+import { assignCast, fanLayout, type CastMember } from './cast.js';
 import './style.css';
 
 const STORAGE_KEY = 'soundsbored.listener.config';
@@ -30,12 +31,10 @@ const els = {
   muteBtn: $<HTMLButtonElement>('muteBtn'),
   status: $<HTMLParagraphElement>('status'),
   presence: $<HTMLParagraphElement>('presence'),
+  party: $<HTMLUListElement>('party'),
   error: $<HTMLParagraphElement>('error'),
   audio: $<HTMLAudioElement>('audio'),
 };
-
-// The beholder's eyestalks wake to show who else is in the room.
-const stalks = [...document.querySelectorAll<SVGGElement>('.stalks .stalk')];
 
 // --- config: server-injected defaults < saved user input --------------------
 
@@ -119,14 +118,35 @@ function followMouse(e: MouseEvent): void {
   pupil.style.transform = `translate(${cx}px, ${cy}px)`;
 }
 
-/** Wake one eyestalk per participant; the broadcaster's stalk burns hotter. */
+/** Gather the party around the eye: one adventurer per client, you marked gilt. */
+function showParty(cast: CastMember[]): void {
+  const spots = fanLayout(cast.length);
+  els.party.replaceChildren(
+    ...cast.map((member, i) => {
+      const li = document.createElement('li');
+      li.className = member.isSelf ? 'adventurer self' : 'adventurer';
+      li.style.setProperty('--sprite', String(member.sprite));
+      li.style.setProperty('--x', spots[i].x.toFixed(2));
+      li.style.setProperty('--y', spots[i].y.toFixed(2));
+      li.style.setProperty('--fade-start', spots[i].fadeStart.toFixed(2));
+      li.style.setProperty('--fade-end', spots[i].fadeEnd.toFixed(2));
+      li.style.setProperty('--flip', spots[i].flip ? '-1' : '1');
+      li.style.zIndex = String(spots[i].z);
+      li.setAttribute('aria-label', member.isSelf ? 'you' : 'a fellow listener');
+      return li;
+    }),
+  );
+}
+
+/** Show who else is in the room: the party around the eye, and a line of text. */
 function showPresence(p: Presence): void {
-  const awake = (p.broadcaster ? 1 : 0) + p.listeners;
-  stalks.forEach((s, i) => s.classList.toggle('awake', i < awake));
-  els.niche.dataset.broadcaster = String(p.broadcaster);
+  const cast = assignCast(p.self, p.listenerIds);
+  showParty(cast);
   const parts: string[] = [];
   if (p.broadcaster) parts.push('broadcaster');
-  if (p.listeners) parts.push(`${p.listeners} listening`);
+  // Counted off the cast, so the tally can never disagree with the figures.
+  // p.listeners excludes you; the party does not, and you are listening too.
+  if (cast.length) parts.push(`${cast.length} listening`);
   els.presence.textContent = parts.join(' · ');
 }
 
@@ -146,6 +166,30 @@ function showState(state: ListenerState): void {
 function showError(message: string | null): void {
   els.error.hidden = message === null;
   els.error.textContent = message ?? '';
+}
+
+/**
+ * Dev only: `?party=5` fans a fake party of 5 around the eye, so the fan can be
+ * looked at without standing up a relay and five browsers. Stripped from prod
+ * builds — `import.meta.env.DEV` is false there and the block is dead code.
+ *
+ * The identities are freshly random each load, mirroring what the relay mints —
+ * so reloading reshuffles the cast, exactly as reconnecting does.
+ */
+function previewParty(): void {
+  if (!import.meta.env.DEV) return;
+  const n = Number(new URLSearchParams(window.location.search).get('party'));
+  if (!Number.isInteger(n) || n < 1) return;
+  const fakeIdentity = (i: number): string =>
+    `subscriber-preview-${i}-${Math.random().toString(36).slice(2, 10)}`;
+  els.niche.dataset.state = 'live';
+  els.status.textContent = 'live';
+  showPresence({
+    broadcaster: true,
+    listeners: n - 1,
+    self: fakeIdentity(1),
+    listenerIds: Array.from({ length: n - 1 }, (_, i) => fakeIdentity(i + 2)),
+  });
 }
 
 function setConnected(connected: boolean): void {
@@ -227,3 +271,4 @@ els.muteBtn.addEventListener('click', () => {
 els.volume.value = String(savedPrefs.volume ?? Number(els.volume.value));
 setMuted(muted);
 showState('disconnected');
+previewParty();

@@ -38,14 +38,12 @@
           <!-- torch glow -->
           <rect class="halo" x="0" y="0" width="240" height="320" fill="url(#glow)" />
 
-          <!-- eyestalks around the crown -->
-          <g class="stalks">
-            <g class="stalk"><path d="M120 34 L96 8" /><circle cx="94" cy="6" r="5" /></g>
-            <g class="stalk"><path d="M120 34 L120 2" /><circle cx="120" cy="2" r="5" /></g>
-            <g class="stalk"><path d="M120 34 L144 8" /><circle cx="146" cy="6" r="5" /></g>
-            <g class="stalk"><path d="M120 34 L70 22" /><circle cx="66" cy="20" r="4" /></g>
-            <g class="stalk"><path d="M120 34 L170 22" /><circle cx="174" cy="20" r="4" /></g>
-          </g>
+          <!-- outer arch: the same sweep cut in straight facets, so it reads as
+               masonry around the keyline rather than a second outline of it -->
+          <path
+            class="frame-outer"
+            d="M20 314 L20 168 L25 126 L43 81 L72 49 L97 34 L120 26 L143 34 L168 49 L197 81 L215 126 L220 168 L220 314 Z"
+          />
 
           <!-- ogee arch keyline -->
           <path
@@ -71,6 +69,9 @@
         <p class="status" id="status" role="status">disconnected</p>
         <p class="presence" id="presence" aria-live="polite"></p>
       </section>
+
+      <!-- one adventurer per client in the room, fanned out and standing in shadow -->
+      <ul class="party" id="party" aria-label="who is in the room"></ul>
 
       <section class="scroll" aria-label="settings">
         <label>
