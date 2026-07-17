@@ -28,7 +28,7 @@ function makeFakeListener() {
     }),
     getState: vi.fn((): ListenerState => 'disconnected'),
     onPresence: vi.fn(() => () => {}),
-    getPresence: vi.fn(() => ({ broadcaster: false, listeners: 0 })),
+    getPresence: vi.fn(() => ({ broadcaster: false, listeners: 0, self: null, listenerIds: [] })),
   } satisfies Listener & Record<string, unknown>;
   return { listener, emitState: (s: ListenerState) => stateCb?.(s) };
 }

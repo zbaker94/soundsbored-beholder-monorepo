@@ -22,8 +22,15 @@ export type ListenerState =
 export interface Presence {
   /** A remote participant is publishing audio — the SoundsBored broadcaster. */
   broadcaster: boolean;
-  /** Other subscribe-only participants sharing the room. */
+  /** How many other subscribe-only participants share the room. */
   listeners: number;
+  /** This client's own identity, or null while disconnected. */
+  self: string | null;
+  /**
+   * Identities of the fellow listeners (excludes the broadcaster and self),
+   * sorted so a given identity keeps its position as others join and leave.
+   */
+  listenerIds: string[];
 }
 
 export interface Listener {
@@ -79,13 +86,30 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
   let refreshTimer: ReturnType<typeof setTimeout> | null = null;
   /** The token currently in use — bounds how long refresh retries keep trying. */
   let currentToken: string | null = null;
-  let presence: Presence = { broadcaster: false, listeners: 0 };
+  const EMPTY_PRESENCE: Presence = {
+    broadcaster: false,
+    listeners: 0,
+    self: null,
+    listenerIds: [],
+  };
+  let presence: Presence = EMPTY_PRESENCE;
 
   const stateListeners = new Set<(s: ListenerState) => void>();
   const presenceListeners = new Set<(p: Presence) => void>();
 
+  function samePresence(a: Presence, b: Presence): boolean {
+    return (
+      a.broadcaster === b.broadcaster &&
+      a.self === b.self &&
+      a.listenerIds.length === b.listenerIds.length &&
+      a.listenerIds.every((id, i) => id === b.listenerIds[i])
+    );
+  }
+
   function setPresence(next: Presence): void {
-    if (next.broadcaster === presence.broadcaster && next.listeners === presence.listeners) return;
+    // Compared by identity, not just by count: one listener swapping for another
+    // leaves the count untouched but must still reach consumers.
+    if (samePresence(next, presence)) return;
     presence = next;
     for (const cb of presenceListeners) cb(next);
   }
@@ -94,16 +118,22 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
    *  broadcaster, everyone else is a fellow listener. */
   function recomputePresence(): void {
     if (!room) {
-      setPresence({ broadcaster: false, listeners: 0 });
+      setPresence(EMPTY_PRESENCE);
       return;
     }
     let broadcaster = false;
-    let listeners = 0;
+    const listenerIds: string[] = [];
     for (const p of room.remoteParticipants.values()) {
       if (p.audioTrackPublications.size > 0) broadcaster = true;
-      else listeners += 1;
+      else listenerIds.push(p.identity);
     }
-    setPresence({ broadcaster, listeners });
+    listenerIds.sort();
+    setPresence({
+      broadcaster,
+      listeners: listenerIds.length,
+      self: room.localParticipant?.identity ?? null,
+      listenerIds,
+    });
   }
 
   function setState(next: ListenerState): void {
@@ -303,7 +333,7 @@ export function createListener(config: ListenerConfig, deps: ListenerDeps = {}):
       room = null;
       await r?.disconnect();
       setState('disconnected');
-      setPresence({ broadcaster: false, listeners: 0 });
+      setPresence(EMPTY_PRESENCE);
     },
 
     attach(element: HTMLAudioElement): void {

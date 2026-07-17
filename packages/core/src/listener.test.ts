@@ -37,11 +37,16 @@ class FakeRoom {
   handlers = new Map<string, Handler[]>();
   connect = vi.fn(async (_url: string, _token: string) => {});
   disconnect = vi.fn(async () => {});
-  remoteParticipants = new Map<string, { audioTrackPublications: Map<string, unknown> }>();
+  remoteParticipants = new Map<
+    string,
+    { identity: string; audioTrackPublications: Map<string, unknown> }
+  >();
+  localParticipant = { identity: 'subscriber-spike-9' };
 
   /** Add/replace a participant; `hasAudio` marks it as the broadcaster. */
   addParticipant(id: string, hasAudio: boolean): void {
     this.remoteParticipants.set(id, {
+      identity: id,
       audioTrackPublications: hasAudio ? new Map([['a', {}]]) : new Map(),
     });
   }
@@ -263,28 +268,75 @@ describe('createListener', () => {
     const seen: Presence[] = [];
     l.onPresence((p) => seen.push(p));
     await l.connect();
-    expect(l.getPresence()).toEqual({ broadcaster: false, listeners: 0 });
+    expect(l.getPresence()).toEqual({
+      broadcaster: false,
+      listeners: 0,
+      self: 'subscriber-spike-9',
+      listenerIds: [],
+    });
 
     // a fellow listener joins (subscribe-only, no audio publication)
     room.addParticipant('l1', false);
     room.emit('participantConnected', {});
-    expect(l.getPresence()).toEqual({ broadcaster: false, listeners: 1 });
+    expect(l.getPresence()).toMatchObject({ listeners: 1, listenerIds: ['l1'] });
 
-    // the broadcaster joins (publishes audio)
+    // the broadcaster joins (publishes audio) — not a fellow listener
     room.addParticipant('gm', true);
     room.emit('participantConnected', {});
-    expect(l.getPresence()).toEqual({ broadcaster: true, listeners: 1 });
+    expect(l.getPresence()).toMatchObject({
+      broadcaster: true,
+      listeners: 1,
+      listenerIds: ['l1'],
+    });
 
     // broadcaster leaves
     room.remoteParticipants.delete('gm');
     room.emit('participantDisconnected', {});
-    expect(l.getPresence()).toEqual({ broadcaster: false, listeners: 1 });
+    expect(l.getPresence()).toMatchObject({ broadcaster: false, listenerIds: ['l1'] });
 
     // disconnect resets presence
     await l.disconnect();
-    expect(l.getPresence()).toEqual({ broadcaster: false, listeners: 0 });
+    expect(l.getPresence()).toEqual({
+      broadcaster: false,
+      listeners: 0,
+      self: null,
+      listenerIds: [],
+    });
 
-    expect(seen).toContainEqual({ broadcaster: true, listeners: 1 });
+    expect(seen).toContainEqual({
+      broadcaster: true,
+      listeners: 1,
+      self: 'subscriber-spike-9',
+      listenerIds: ['l1'],
+    });
+  });
+
+  it('emits presence when a listener is replaced by another of the same count', async () => {
+    const l = createListener(config, makeDeps());
+    await l.connect();
+    room.addParticipant('l1', false);
+    room.emit('participantConnected', {});
+
+    const seen: Presence[] = [];
+    l.onPresence((p) => seen.push(p));
+
+    // Count is unchanged (1 -> 1), but it is a different person: the identity
+    // swap must still notify, or the UI would keep showing the departed one.
+    room.remoteParticipants.delete('l1');
+    room.addParticipant('l2', false);
+    room.emit('participantConnected', {});
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatchObject({ listeners: 1, listenerIds: ['l2'] });
+  });
+
+  it('orders listener identities stably regardless of join order', async () => {
+    const l = createListener(config, makeDeps());
+    await l.connect();
+    for (const id of ['l3', 'l1', 'l2']) room.addParticipant(id, false);
+    room.emit('participantConnected', {});
+    // Sorted, so a figure keeps its slot in the fan as others come and go.
+    expect(l.getPresence().listenerIds).toEqual(['l1', 'l2', 'l3']);
   });
 
   it('onState notifies subscribers and unsubscribes cleanly', async () => {
