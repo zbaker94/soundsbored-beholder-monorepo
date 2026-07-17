@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { z } from 'zod';
@@ -22,6 +23,8 @@ export function buildServer(deps: BuildServerDeps): FastifyInstance {
 
   // Per-server monotonic suffix for participant identities — scoped to this
   // instance so separate buildServer() calls (e.g. tests) don't share state.
+  // It guarantees uniqueness but nothing more: it restarts at 1 with the
+  // process, so on its own the Nth joiner always lands on the same identity.
   let tokenSeq = 0;
 
   const app = Fastify({ logger: false });
@@ -45,7 +48,10 @@ export function buildServer(deps: BuildServerDeps): FastifyInstance {
     }
 
     tokenSeq += 1;
-    const identity = `${role}-${room}-${tokenSeq}`;
+    // The random half is what clients hash to pick an avatar, so it has to vary
+    // per connection rather than per join order; the counter keeps the whole
+    // thing unique even if two randoms ever collided.
+    const identity = `${role}-${room}-${tokenSeq}-${randomUUID().slice(0, 8)}`;
 
     let token: string;
     try {

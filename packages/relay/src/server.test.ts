@@ -125,6 +125,42 @@ describe('POST /token', () => {
     expect(res.json()).toEqual({ error: 'bad request' });
   });
 
+  it('mints an unpredictable identity, not one derived from join order', async () => {
+    // Clients pick their avatar by hashing this identity, so an identity fixed by
+    // join order would hand the first listener the same avatar every session.
+    // A fresh server must not reissue the identity its predecessor started with.
+    const identityFor = async (server: FastifyInstance): Promise<string> => {
+      vi.mocked(mintToken).mockClear();
+      await server.inject({
+        method: 'POST',
+        url: '/token',
+        payload: { room: 'my-room', role: 'subscriber', password: 'correct-password' },
+      });
+      return vi.mocked(mintToken).mock.calls[0][0].identity;
+    };
+
+    const first = await identityFor(app);
+    const other = buildServer(TEST_DEPS);
+    await other.ready();
+    const second = await identityFor(other);
+    await other.close();
+
+    expect(second).not.toBe(first);
+  });
+
+  it('keeps identities unique across requests to one server', async () => {
+    vi.mocked(mintToken).mockClear();
+    for (let i = 0; i < 5; i += 1) {
+      await app.inject({
+        method: 'POST',
+        url: '/token',
+        payload: { room: 'my-room', role: 'subscriber', password: 'correct-password' },
+      });
+    }
+    const identities = vi.mocked(mintToken).mock.calls.map((c) => c[0].identity);
+    expect(new Set(identities).size).toBe(5);
+  });
+
   it('returns 500 when token minting fails', async () => {
     vi.mocked(mintToken).mockRejectedValueOnce(new Error('signing failure'));
 
