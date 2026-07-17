@@ -8,3 +8,5 @@ dist/
 # orchestration scratch
 .superpowers/
 .desloppify/
+.claude/skills/desloppify/SKILL.md
+.vscode/settings.json
